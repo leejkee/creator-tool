@@ -1,0 +1,472 @@
+[
+  {
+    "name": "芈月",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/00b73cc3986e60ec3224af60bcea70c8.png",
+    "file": "assets/芈月.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "西施",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/53501d17f420343e63c8254e2ca27035.png",
+    "file": "assets/西施.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "白起",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/e39e532bc24411982f7c6088f878dc62.png",
+    "file": "assets/白起.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "干将莫邪",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/e0560e0b84a29142a17dcf67cdff8c38.png",
+    "file": "assets/干将莫邪.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "牛魔",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/2fc09384358b198f5eedf4139ce09bf3.png",
+    "file": "assets/牛魔.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "弈星",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/56d597fc215ddd39719c09a488f690cf.png",
+    "file": "assets/弈星.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "明世隐",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/e24ccadc71d4a06bdd24c26f4d5b223d.png",
+    "file": "assets/明世隐.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "瑶",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/07beeb1b1adbad05422df3a9ba132e1b.png",
+    "file": "assets/瑶.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "太乙真人",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/a31dd025a24af7f8a4931f71e9452f0f.png",
+    "file": "assets/太乙真人.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "钟馗",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/fca199de27a5433115cae267d62c8f88.png",
+    "file": "assets/钟馗.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "老夫子",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/db1f6d590fc873fd29e419307de814fc.png",
+    "file": "assets/老夫子.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "刘邦",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/3635f93ddef07565b9534caaad7b1cad.png",
+    "file": "assets/刘邦.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "鬼谷子",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/ff22f959c9a0ba45a93a2fabeb218e91.png",
+    "file": "assets/鬼谷子.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "少司缘",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/7fd84235621ff146b8e09a19e0c9b818.png",
+    "file": "assets/少司缘.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "大司命",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/a7510c841d43bd1ebbbdb1f4b957f4e0.png",
+    "file": "assets/大司命.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "扁鹊",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/bd8a53d6313a1de58d6c11b30ad22c40.png",
+    "file": "assets/扁鹊.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "项羽",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/7a4144ed5172b69c6b781d811cb3880a.png",
+    "file": "assets/项羽.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "东皇太一",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/8d352f4f0bec8b278e4680c5b05839d3.png",
+    "file": "assets/东皇太一.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "姜子牙",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/8fe36074444156a6266b0bfc6cbfa916.png",
+    "file": "assets/姜子牙.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "海月",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/b1b36f6c36d67aced8e04eb616bab8c5.png",
+    "file": "assets/海月.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "敖隐",
+    "kind": "棋子",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/2e4717b3fb3da29493d909797dc64f2b.png",
+    "file": "assets/敖隐.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "纯净苍穹",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/60f8afbe0d6ddc75ffad2b0c8869c4fd.png",
+    "file": "assets/纯净苍穹.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "贤者之书",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/cc8ad937f00dd023300cd58d580378ab.png",
+    "file": "assets/贤者之书.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "噬神之书",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/b95d5c5c28ebc7729e970a47dc4e2665.png",
+    "file": "assets/噬神之书.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "聚灵法杖",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/05428d2b40986fbfc246831797741a14.png",
+    "file": "assets/聚灵法杖.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "磐石之心",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/5ea616ef165e435ec45f311d7a3add31.png",
+    "file": "assets/磐石之心.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "末世",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/e653b114b33dead2c4bd04a17aa39663.png",
+    "file": "assets/末世.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "金色圣剑",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/49efaa359c62c90d031c8dc24d55bd23.png",
+    "file": "assets/金色圣剑.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "极寒风暴",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/89d09a6093ec9035400128706f56b82d.png",
+    "file": "assets/极寒风暴.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "不死鸟之眼",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/6383879ee533978bf3893857d4feac3e.png",
+    "file": "assets/不死鸟之眼.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "生命魔典",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/43296b4d8e0451e09456519a2ba19b85.png",
+    "file": "assets/生命魔典.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "名刀·司命",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/7792665c089ab69e40ea753d06e34fb1.png",
+    "file": "assets/名刀·司命.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "自然法杖",
+    "kind": "装备",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/0a881611f56349eaff4e9cfd9e3b3992.png",
+    "file": "assets/自然法杖.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "唤醒",
+    "kind": "效果牌",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/075cf6bfc549ccca7f47a89a9d98a315.png",
+    "file": "assets/唤醒.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "演练战术",
+    "kind": "效果牌",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/8eff3bdaf8fe36b393544781388072ff.png",
+    "file": "assets/演练战术.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "5阶英雄兑换券",
+    "kind": "效果牌",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_texture_auto/85be7225db701a01c047adf7abf6cf0e.png",
+    "file": "assets/5阶英雄兑换券.png",
+    "size": [
+      404,
+      564
+    ]
+  },
+  {
+    "name": "安琪拉_棋手",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_haibao_auto/c43f858a6825abf330ce927a5a000aac.png",
+    "file": "assets/安琪拉_棋手.png",
+    "size": [
+      544,
+      544
+    ]
+  },
+  {
+    "name": "特制灵异追踪器",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/44209c4cbf5dd1807956e76ea3340cdd.png",
+    "file": "assets/特制灵异追踪器.png",
+    "size": [
+      192,
+      192
+    ]
+  },
+  {
+    "name": "顿悟时刻",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_talent_auto/1f1151a19463ccce92c95cdb63693388.png",
+    "file": "assets/顿悟时刻.png",
+    "size": [
+      192,
+      192
+    ]
+  },
+  {
+    "name": "灵异探测大改装",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_talent_auto/f1583471506cbeed6b783327fbff9845.png",
+    "file": "assets/灵异探测大改装.png",
+    "size": [
+      192,
+      192
+    ]
+  },
+  {
+    "name": "奇想·阵营",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/8f695e46c809e4080b03668c20599bb4.png",
+    "file": "assets/奇想·阵营.png",
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "name": "奇想·补给",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/23f94451d1a915330217e1998fa27673.png",
+    "file": "assets/奇想·补给.png",
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "name": "奇想·英雄牌",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/49a77ff02baee9c3db163ae420a7d7a0.png",
+    "file": "assets/奇想·英雄牌.png",
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "name": "奇想·胜利",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/57f604f324ee5c791de6f99444c9ce23.png",
+    "file": "assets/奇想·胜利.png",
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "name": "奇想·进化",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/15560b6ce75d5b80b3a7b8d548a51ddf.png",
+    "file": "assets/奇想·进化.png",
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "name": "奇想·高阶牌",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/b0602a07f75dd8de1182b71872c65e37.png",
+    "file": "assets/奇想·高阶牌.png",
+    "size": [
+      256,
+      256
+    ]
+  },
+  {
+    "name": "定向毁灭模块",
+    "kind": "棋手及技能",
+    "url": "https://game-os-cos.kohsocialapp.qq.com/manage/custom_os_lord_jineng_auto/c6b2d2cf1cc00b2d3da16620e2e5afed.png",
+    "file": "assets/定向毁灭模块.png",
+    "size": [
+      256,
+      256
+    ]
+  }
+]
