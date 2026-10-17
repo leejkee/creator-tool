@@ -4,6 +4,8 @@
 
 本文件保留总体流程与共同约束，具体设计拆为三个模块。以下文档与本文件共同构成设计依据；`WEB_EDITOR_REQUIREMENTS.md` 等旧设计已 discard。
 
+新增及实质修改的 Python 代码遵循 [代码规范](CODING_STANDARDS.md)，包括字面量归属、类型契约、模块边界与渐进工具接入约定。
+
 | 模块 | 文档 | 职责 |
 | --- | --- | --- |
 | GUI 主线程 | [PYSIDE6_GUI.md](PYSIDE6_GUI.md) | PySide6 窗口、交互、外部变更审阅、发起导出 |

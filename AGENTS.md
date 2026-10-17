@@ -1,6 +1,7 @@
 ## Reference
 
 - development docs: @docs/dev.md
+- coding standard: @docs/CODING_STANDARDS.md
 
 ## First version
 
@@ -12,6 +13,11 @@
 - Do not add strategic recommendations or change the user's decisions without an explicit request. Preserve original notes in `sourceNotes`.
 - Verify with `validate`, then `render`. Missing assets, invalid crop, font errors and content overflow block final export.
 - Acceptance workdir is `tool_test/`; use the copied resources there, and use old project images only as reference. Never run the old rendering script as the new application test.
+
+
+## Rules
+
+- Do **NOT** write test code until User ask for this.
 
 
 ## todo
