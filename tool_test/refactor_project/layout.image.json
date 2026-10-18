@@ -1,0 +1,173 @@
+{
+  "image-create-tool-version": "v0.1.0",
+  "documentId": "refactor-layout-demo",
+  "revision": 11,
+  "title": "布局与样式验收",
+  "sourceNotes": "用于检查固定宽度、自适应缩图、组合样式、文本裁剪与背景效果。",
+  "assetsDir": "../assets",
+  "composition": {
+    "width": 1000,
+    "height": "auto",
+    "padding": 24,
+    "gap": 20,
+    "background": "#132132"
+  },
+  "modules": [
+    {
+      "id": "heading",
+      "type": "text",
+      "text": "布局与一次性样式",
+      "height": 80,
+      "style": {
+        "fontSize": 40,
+        "bold": true,
+        "color": "#FFD66B"
+      }
+    },
+    {
+      "id": "sizing",
+      "type": "group",
+      "layout": {
+        "type": "row",
+        "gap": 20
+      },
+      "elements": [
+        {
+          "id": "fixed-image",
+          "type": "image",
+          "width": 300,
+          "height": 220,
+          "processor": {
+            "script": "crop.py",
+            "function": "process",
+            "params": {
+              "x": 0,
+              "y": 0,
+              "width": 256,
+              "height": 256
+            }
+          },
+          "contentScale": 0.5,
+          "style": {
+            "background": "#304053",
+            "border": {
+              "width": 2,
+              "color": "#FFD66B"
+            }
+          },
+          "assetId": "芈月.png"
+        },
+        {
+          "id": "auto-image",
+          "type": "image",
+          "height": 220,
+          "contentScale": 0.5,
+          "style": {
+            "background": "#304053",
+            "border": {
+              "width": 2,
+              "color": "#76D7E8"
+            }
+          },
+          "assetId": "芈月.png"
+        }
+      ]
+    },
+    {
+      "id": "caption",
+      "type": "group",
+      "style": {},
+      "elements": [
+        {
+          "id": "caption-image",
+          "position": [
+            0,
+            0
+          ],
+          "type": "image",
+          "style": {
+            "radius": 8
+          },
+          "height": 180,
+          "fit": "contain",
+          "assetId": "芈月.png"
+        },
+        {
+          "id": "caption-text",
+          "position": [
+            1,
+            0
+          ],
+          "type": "text",
+          "text": "不同的图片和文字，共用同一种组合样式。",
+          "style": {
+            "fontSize": 32,
+            "bold": false,
+            "align": "left"
+          }
+        }
+      ],
+      "layout": [
+        2,
+        1
+      ]
+    },
+    {
+      "id": "glass",
+      "type": "group",
+      "layout": {
+        "type": "column",
+        "padding": 20,
+        "gap": 12
+      },
+      "style": {
+        "background": {
+          "type": "blur",
+          "assetQuery": {
+            "name": "芈月"
+          },
+          "blurRadius": 14,
+          "color": "#102030D0"
+        },
+        "radius": 14,
+        "border": {
+          "width": 0
+        }
+      },
+      "elements": [
+        {
+          "id": "glass-text",
+          "type": "text",
+          "text": "模块独立毛玻璃背景，内容文字保持清晰。",
+          "style": {
+            "fontSize": 28,
+            "color": "#FFFFFF",
+            "align": "left"
+          },
+          "visible": true
+        },
+        {
+          "id": "clipped",
+          "type": "text",
+          "height": 30,
+          "text": "这段大字号文字只允许在三十像素高度内显示。",
+          "style": {
+            "fontSize": 26,
+            "color": "#FFC166",
+            "bold": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "footer",
+      "type": "text",
+      "text": "下一个模块保持完整，文字越界不会覆盖这里。",
+      "style": {
+        "fontSize": 28,
+        "color": "#FFFFFF",
+        "align": "left"
+      }
+    }
+  ]
+}

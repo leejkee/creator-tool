@@ -3,8 +3,17 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 from pathlib import Path
 from .model import ProjectError, fingerprint
+
+
+def default_png_path(json_path: Path, element_id: str | None = None) -> Path:
+    """Module exports get their own filename rather than replacing the full image."""
+    if element_id is None:
+        return json_path.with_suffix(".png")
+    suffix = re.sub(r"[^\w.-]", "_", element_id)[:80]
+    return json_path.with_name(json_path.stem + "_" + suffix + ".png")
 
 
 @contextlib.contextmanager

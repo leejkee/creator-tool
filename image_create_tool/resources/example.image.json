@@ -1,0 +1,20 @@
+{
+  "image-create-tool-version": "v0.1.0",
+  "documentId": "example-image",
+  "revision": 0,
+  "title": "图片示例",
+  "sourceNotes": "保留用户原文，应用样式不改变内容。",
+  "assetsDir": "assets/",
+  "composition": {"width": 1000, "height": "auto", "padding": 24, "gap": 20, "background": "#152030"},
+  "modules": [
+    {
+      "id": "section",
+      "type": "group",
+      "layout": [2, 1],
+      "elements": [
+        {"id": "heading", "type": "text", "position": [0, 0], "text": "模块和样式", "style": {"fontSize": 44, "bold": true, "color": "#FFD66B"}},
+        {"id": "body", "type": "text", "position": [1, 0], "text": "每张图片独立保存 JSON；样式一次性应用，之后独立调整。", "style": {"fontSize": 28, "color": "#FFFFFF"}}
+      ]
+    }
+  ]
+}

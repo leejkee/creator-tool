@@ -1,24 +1,25 @@
 """PySide6 UI. Qt objects are only touched on the application's main thread."""
 from __future__ import annotations
 
-import copy
 import json
 import uuid
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, Signal, QTimer, QRectF
-from PySide6.QtGui import QAction, QColor, QPen, QPixmap, QDesktopServices, QFont, QFontDatabase
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QObject, Qt, Signal, QTimer
+from PySide6.QtGui import QAction, QColor, QPen, QPixmap, QFont, QFontDatabase
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QSplitter, QVBoxLayout, QHBoxLayout,
     QFormLayout, QPushButton, QLabel, QTreeWidget, QTreeWidgetItem, QGraphicsView,
     QGraphicsScene, QGraphicsRectItem, QLineEdit, QPlainTextEdit, QSpinBox,
     QComboBox, QFileDialog, QMessageBox, QDialog, QDialogButtonBox, QInputDialog,
     QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem, QCheckBox,
+    QAbstractItemView, QDoubleSpinBox, QScrollArea,
 )
 
-from .model import find_element, ProjectError, resolve_directory
+from .model import find_element, ProjectError
 from .service import ApplicationService
+from .styles import effective_style
+from .storage import default_png_path
 
 
 class ServiceBridge(QObject):
@@ -72,6 +73,8 @@ class Canvas(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
 
     def show_artifact(self, artifact, editable=True):
+        if not artifact.get("pngBytes"):
+            return
         self.scene.clear()
         self.boxes.clear()
         if not artifact.get("pngBytes"):
@@ -82,8 +85,6 @@ class Canvas(QGraphicsView):
         self.scene.setSceneRect(0, 0, pixmap.width(), pixmap.height())
         if editable:
             for index, bounds in enumerate(artifact["layout"].get("elements", [])):
-                if bounds["elementId"].endswith(":title"):
-                    bounds = {**bounds, "elementId": bounds["moduleId"]}
                 box = HitBox(bounds, self.window)
                 box.setZValue(10 + index)
                 self.scene.addItem(box)
@@ -109,7 +110,7 @@ class Canvas(QGraphicsView):
 
 
 class EditorWindow(QMainWindow):
-    def __init__(self, project=None, service=None):
+    def __init__(self, file_path=None, service=None, settings=None):
         super().__init__()
         # Qt's offscreen backend may not discover the Windows CJK fallback fonts.
         # Register the same installed Chinese font explicitly for UI labels.
@@ -119,9 +120,9 @@ class EditorWindow(QMainWindow):
             families = QFontDatabase.applicationFontFamilies(font_id)
             if families:
                 QApplication.instance().setFont(QFont(families[0], 10))
-        self.setWindowTitle("一图流攻略编辑器 · v0.0.1")
+        self.setWindowTitle("图片 JSON 编辑器 · v0.1.0")
         self.resize(1450, 950)
-        self.service = service or ApplicationService()
+        self.service = service or ApplicationService(settings=settings)
         self.bridge = ServiceBridge(self.service)
         self.bridge.event.connect(self.on_event, Qt.ConnectionType.QueuedConnection)
         self.bridge.completed.connect(self.on_completed, Qt.ConnectionType.QueuedConnection)
@@ -137,8 +138,8 @@ class EditorWindow(QMainWindow):
         self.text_timer.setInterval(400)
         self.text_timer.timeout.connect(self.apply_properties)
         self.build_ui()
-        if project:
-            self.call("open_project", path=str(project), callback=self.set_state)
+        if file_path:
+            self.call("open_file", path=str(file_path), callback=self.set_state)
 
     def call(self, method, callback=None, **kwargs):
         future = self.service.command(method, **kwargs)
@@ -157,20 +158,19 @@ class EditorWindow(QMainWindow):
             self._after_flush = None
             self.status.setText("修改未保存：" + str(exc))
             self.issues.setPlainText(str(exc))
-            if isinstance(exc, ProjectError) and exc.code == "INITIALIZE_REQUIRED":
-                if QMessageBox.question(self, "初始化项目", "现有 pjt.json 无效。确认使用当前内容覆盖并初始化？") == QMessageBox.StandardButton.Yes:
-                    self.call("initialize", callback=self.set_state)
 
     def build_ui(self):
-        toolbar = self.addToolBar("项目")
-        for title, handler in [("打开目录", self.open_folder), ("项目设置", self.project_settings),
+        toolbar = self.addToolBar("图片文件")
+        for title, handler in [("打开 JSON", self.open_file), ("新建 JSON", self.new_file),
+                               ("另存 JSON", self.save_as), ("图片设置", self.image_settings),
+                               ("应用设置", self.app_settings), ("打开终端", lambda: self.call("open_terminal")),
                                ("保存/重试", self.save), ("撤销", lambda: self.history(False)),
                                ("重做", lambda: self.history(True)), ("刷新素材", self.refresh_assets),
                                ("适应画布", lambda: self.canvas.fit()), ("导出 PNG", self.export)]:
             action = QAction(title, self)
             action.triggered.connect(handler)
             toolbar.addAction(action)
-        self.status = QLabel("打开一个工作目录开始")
+        self.status = QLabel("打开或新建一份图片 JSON 开始")
         self.statusBar().addWidget(self.status, 1)
         root = QWidget()
         root_layout = QVBoxLayout(root)
@@ -190,6 +190,7 @@ class EditorWindow(QMainWindow):
         left = QWidget()
         left_layout = QVBoxLayout(left)
         self.tree = QTreeWidget()
+        self.tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.tree.setHeaderLabel("模块与元素")
         self.tree.itemSelectionChanged.connect(self.tree_selected)
         left_layout.addWidget(self.tree)
@@ -231,16 +232,27 @@ class EditorWindow(QMainWindow):
             spin = QSpinBox(); spin.setRange(-40000 if "offset" in key else 0, 40000)
             self.fields[key] = spin
             form.addRow(label, spin)
-        self.fit_mode = QComboBox(); self.fit_mode.addItems(["contain", "cover", "stretch"])
+        self.fit_mode = QComboBox(); self.fit_mode.addItems(["contain", "cover", "stretch", "height", "width"])
         form.addRow("图片填充", self.fit_mode)
+        self.content_scale = QDoubleSpinBox()
+        self.content_scale.setRange(0.01, 100)
+        self.content_scale.setValue(1)
+        self.content_scale.setSingleStep(0.1)
+        form.addRow("图片内部缩放", self.content_scale)
         right_layout.addLayout(form)
         for title, handler in [("应用属性", self.apply_properties), ("替换/选择素材", self.choose_asset),
                                ("精确裁剪", self.crop), ("模块布局", self.layout_settings),
-                               ("画布设置", self.composition_settings)]:
+                               ("画布设置", self.composition_settings), ("样式参数", self.style_settings),
+                               ("批量应用 Style", self.apply_saved_style), ("保存为新 Style", self.save_style),
+                               ("从模板添加模块", self.add_template), ("保存为新模板", self.save_template),
+                               ("导出所选模块", self.export_element)]:
             button = QPushButton(title); button.clicked.connect(handler); right_layout.addWidget(button)
         self.issues = QPlainTextEdit(); self.issues.setReadOnly(True); self.issues.setPlaceholderText("问题与任务状态")
         right_layout.addWidget(self.issues, 1)
-        splitter.addWidget(right)
+        properties_scroll = QScrollArea()
+        properties_scroll.setWidgetResizable(True)
+        properties_scroll.setWidget(right)
+        splitter.addWidget(properties_scroll)
         splitter.setSizes([260, 850, 340])
         root_layout.addWidget(splitter, 1)
         self.setCentralWidget(root)
@@ -250,21 +262,24 @@ class EditorWindow(QMainWindow):
         self.visible.toggled.connect(self.schedule_text)
         self.locked.toggled.connect(self.schedule_text)
         self.fit_mode.currentIndexChanged.connect(self.schedule_text)
+        self.content_scale.valueChanged.connect(self.schedule_text)
         for spin in self.fields.values():
             spin.valueChanged.connect(self.schedule_text)
 
     def set_state(self, state):
         self.state = state
         doc = state["document"]
-        self.setWindowTitle(f"{doc['title']} · 一图流编辑器 · {state['project']}")
+        self.setWindowTitle(f"{doc['title']} · 图片 JSON 编辑器 · {state['filePath']}")
         self.status.setText(f"版本 {doc['revision']} · " + ("外部修改待处理，尚未写回" if state.get("candidate") else "未保存" if state["dirty"] else "已保存"))
         self.external_label.setText("检测到外部修改，请比较并选择合并或恢复" if state.get("candidate") else "")
         self._loading = True
+        selected_ids = set(self.selected_ids())
         self.tree.clear()
         def add(parent, node):
-            item = QTreeWidgetItem([node.get("title") or node.get("text", "")[:24] or node["id"]])
+            item = QTreeWidgetItem([node.get("name") or node.get("title") or node.get("text", "")[:24] or node["id"]])
             item.setData(0, Qt.ItemDataRole.UserRole, node["id"])
             parent.addChild(item) if parent else self.tree.addTopLevelItem(item)
+            item.setSelected(node["id"] in selected_ids)
             if node.get("type") == "itemRow":
                 for suffix, label in [(":text", "文字"), (":image", "图片")]:
                     child = QTreeWidgetItem([label]); child.setData(0, Qt.ItemDataRole.UserRole, node["id"] + suffix); item.addChild(child)
@@ -331,14 +346,32 @@ class EditorWindow(QMainWindow):
         elif target != "current" and self.state and self.state.get("candidate"):
             self.call("preview_external_change", mode=target)
 
-    def open_folder(self):
+    def open_file(self):
         if self.state and (self.state["dirty"] or self.state.get("candidate") or self._editing):
-            QMessageBox.information(self, "先保存", "请先保存或处理外部修改，再切换目录。")
+            QMessageBox.information(self, "先保存", "请先保存或处理外部修改，再切换文件。")
             return
-        path = QFileDialog.getExistingDirectory(self, "打开工作目录")
+        path, _ = QFileDialog.getOpenFileName(self, "打开图片 JSON", "", "JSON (*.json)")
         if path:
-            self.artifacts.clear(); self.selected = None; self._fit_once = True
-            self.call("open_project", path=path, callback=self.set_state)
+            self.call("open_file", path=path, callback=self.reset_file)
+
+    def new_file(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(self, "新建图片 JSON", "image.json", "JSON (*.json)")
+        if path:
+            self.flush(lambda: self.call("new_file", path=path, callback=self.reset_file))
+
+    def reset_file(self, state: dict) -> None:
+        self.artifacts.clear()
+        self.canvas.scene.clear()
+        self.canvas.boxes.clear()
+        self.selected = None
+        self._fit_once = True
+        self.set_state(state)
+
+    def save_as(self) -> None:
+        if self.state:
+            path, _ = QFileDialog.getSaveFileName(self, "另存图片 JSON", self.state["filePath"], "JSON (*.json)")
+            if path:
+                self.flush(lambda: self.call("save_as", path=path, callback=self.reset_file))
 
     def tree_selected(self):
         if not self._loading:
@@ -361,7 +394,7 @@ class EditorWindow(QMainWindow):
         self.text_timer.stop()
         self.text_edit.setPlainText(node.get("text", node.get("title", "")))
         self.selection_label.setText(element_id)
-        style = node.get("style", {})
+        style = effective_style(node)
         if "elements" in node and "type" not in node:
             style = {"fontSize": 36, "bold": True, "color": "#C2A0FF", **node.get("titleStyle", {})}
         self.size.setValue(int(style.get("fontSize", 28)))
@@ -370,8 +403,16 @@ class EditorWindow(QMainWindow):
         self.visible.setChecked(node.get("visible", True))
         self.locked.setChecked(node.get("locked", False))
         for key, spin in self.fields.items():
-            spin.setValue(int(node.get(key, 0)))
+            value = node.get(key, 0)
+            spin.setValue(int(value) if isinstance(value, (int, float)) else 0)
         self.fit_mode.setCurrentText(node.get("fit", "contain"))
+        self.content_scale.setValue(node.get("contentScale", 1))
+        is_text = node.get("type") == "text"
+        for widget in (self.text_edit, self.size, self.bold):
+            widget.setEnabled(is_text)
+        self.color.setEnabled(is_text or node.get("type") == "rect")
+        self.fit_mode.setEnabled(node.get("type") == "image")
+        self.content_scale.setEnabled(node.get("type") == "image")
         self._loading, self._editing = False, False
         self.canvas.highlight(element_id)
 
@@ -432,6 +473,8 @@ class EditorWindow(QMainWindow):
             values["locked"] = self.locked.isChecked()
         if self.fit_mode.currentText() != node.get("fit", "contain"):
             values["fit"] = self.fit_mode.currentText()
+        if self.content_scale.value() != node.get("contentScale", 1):
+            values["contentScale"] = self.content_scale.value()
         if values:
             ops.append({"type": "set_properties", "elementId": self.selected, "values": values})
         self._editing = False
@@ -454,13 +497,19 @@ class EditorWindow(QMainWindow):
     def add_module(self):
         name, ok = QInputDialog.getText(self, "添加模块", "模块标题")
         if ok:
-            self.submit_ops([{"type": "add_module", "module": {"id": "module_" + uuid.uuid4().hex[:8],
-                            "title": name, "layout": {"type": "column", "padding": 24, "gap": 16}, "elements": []}}])
+            identity = "module_" + uuid.uuid4().hex[:8]
+            elements = [{"id": identity + ":title", "type": "text", "text": name,
+                         "style": {"fontSize": 36, "bold": True}}] if name else []
+            self.submit_ops([{"type": "add_module", "module": {"id": identity, "type": "group", "name": name,
+                            "layout": {"type": "column", "gap": 16}, "elements": elements}}])
 
     def parent_id(self):
         if not self.state or not self.state["document"]["modules"]:
             raise ProjectError("NO_MODULE", "请先添加模块")
         if self.selected:
+            selected_node = find_element(self.state["document"], self.selected)
+            if selected_node.get("type", "group") == "group":
+                return self.selected
             for module in self.state["document"]["modules"]:
                 def contains(n):
                     return self.selected.startswith(n["id"] + ":") or self.selected == n["id"] or any(contains(c) for c in n.get("elements", []))
@@ -469,7 +518,7 @@ class EditorWindow(QMainWindow):
         return self.state["document"]["modules"][0]["id"]
 
     def add_element(self):
-        kind, ok = QInputDialog.getItem(self, "添加元素", "类型", ["text", "image", "itemRow", "rect", "group"], editable=False)
+        kind, ok = QInputDialog.getItem(self, "添加元素", "类型", ["text", "image", "rect", "group"], editable=False)
         if not ok:
             return
         try:
@@ -494,10 +543,21 @@ class EditorWindow(QMainWindow):
             return
         mid = self.parent_id()
         order = list(self.state["document"]["composition"].get("moduleOrder", [m["id"] for m in self.state["document"]["modules"]]))
+        if mid not in order:
+            for module in self.state["document"]["modules"]:
+                if any(node["id"] == mid for node in self._descendants(module)):
+                    mid = module["id"]
+                    break
         index = order.index(mid); other = index + delta
         if 0 <= other < len(order):
             order[index], order[other] = order[other], order[index]
             self.submit_ops([{"type": "reorder_modules", "order": order}])
+
+    @staticmethod
+    def _descendants(node: dict):
+        yield node
+        for child in node.get("elements", []):
+            yield from EditorWindow._descendants(child)
 
     def save(self):
         self.flush(lambda: self.call("save", callback=self.set_state))
@@ -520,22 +580,19 @@ class EditorWindow(QMainWindow):
         def export_saved():
             if self.state.get("candidate"):
                 self.issues.setPlainText("请先合并或恢复外部修改"); return
-            root = resolve_directory(Path(self.state["project"]), self.state["document"]["outputsDir"])
-            path, _ = QFileDialog.getSaveFileName(self, "导出 PNG", str(root / "guide.png"), "PNG (*.png)")
-            if path:
-                self.call("request_export", output_path=path)
+            self.call("request_export")
         self.flush(export_saved)
 
     def refresh_assets(self):
         self.call("refresh_assets", callback=lambda _: self.call("request_preview"))
 
-    def project_settings(self):
+    def image_settings(self):
         if not self.state:
             return
-        dialog = QDialog(self); dialog.setWindowTitle("项目设置")
+        dialog = QDialog(self); dialog.setWindowTitle("图片设置")
         form = QFormLayout(dialog)
         fields = {}
-        for key, label in [("title", "项目名称"), ("assetsDir", "素材目录"), ("outputsDir", "输出目录")]:
+        for key, label in [("title", "图片名称"), ("assetsDir", "素材目录")]:
             fields[key] = QLineEdit(self.state["document"][key])
             row = QHBoxLayout(); row.addWidget(fields[key])
             if key != "title":
@@ -567,12 +624,97 @@ class EditorWindow(QMainWindow):
         if not self.selected or not self.state:
             return
         node = find_element(self.state["document"], self.selected)
-        raw, ok = QInputDialog.getMultiLineText(self, "模块/组合布局", "type: column / row / fixed；padding；gap", json.dumps(node.get("layout", {"type": "column", "padding": 24, "gap": 16}), indent=2))
+        raw, ok = QInputDialog.getMultiLineText(self, "模块/组合布局", "[行数, 列数] 或 type: column/row/grid/fixed；padding；gap", json.dumps(node.get("layout", {"type": "column", "gap": 16}), indent=2))
         if ok:
             try:
                 self.submit_ops([{"type": "set_properties", "elementId": self.selected, "values": {"layout": json.loads(raw)}}])
             except Exception as exc:
                 self.issues.setPlainText(str(exc))
+
+    def selected_ids(self) -> list[str]:
+        identities = [item.data(0, Qt.ItemDataRole.UserRole) for item in self.tree.selectedItems()]
+        return identities if self.selected in identities else ([self.selected] if self.selected else identities)
+
+    def style_settings(self) -> None:
+        if not self.selected or not self.state:
+            return
+        node = find_element(self.state["document"], self.selected)
+        raw, accepted = QInputDialog.getMultiLineText(
+            self, "模块样式", "background / border / radius / opacity；文本 font/fontSize/color/align",
+            json.dumps(node.get("style", {}), ensure_ascii=False, indent=2))
+        if accepted:
+            try:
+                values = json.loads(raw)
+                self.submit_ops([{"type": "replace_style", "elementId": self.selected, "values": values}])
+            except ValueError as exc:
+                self.issues.setPlainText(str(exc))
+
+    def app_settings(self) -> None:
+        def show(values):
+            raw, accepted = QInputDialog.getMultiLineText(
+                self, "应用设置", "全局资源目录、终端程序和参数数组",
+                json.dumps(values, ensure_ascii=False, indent=2))
+            if accepted:
+                try:
+                    self.call("configure", values=json.loads(raw), callback=lambda _: self.status.setText("应用设置已保存"))
+                except ValueError as exc:
+                    self.issues.setPlainText(str(exc))
+        self.call("get_settings", callback=show)
+
+    def choose_resource(self, kind: str, callback) -> None:
+        def choose(resources):
+            if not resources:
+                self.issues.setPlainText("尚无可用资源，可先选中模块保存为新样式或模板。")
+                return
+            identity, accepted = QInputDialog.getItem(self, "选择资源", "名称", [item["id"] for item in resources], editable=False)
+            if accepted:
+                callback(identity)
+        self.call("list_resources", kind=kind, callback=choose)
+
+    def apply_saved_style(self) -> None:
+        identities = self.selected_ids()
+        if self.state and identities:
+            def apply(identity):
+                self.call("apply_style", base_revision=self.state["document"]["revision"],
+                          element_ids=identities, style_id=identity, callback=self.set_state)
+            self.flush(lambda: self.choose_resource("styles", apply))
+
+    def save_resource(self, kind: str) -> None:
+        if not self.state:
+            return
+        name, accepted = QInputDialog.getText(self, "保存新资源", "新名称（现有资源不会覆盖）")
+        if accepted and name.strip():
+            self.flush(lambda: self.call("save_resource", kind=kind, resource_id=name.strip(), element_id=self.selected,
+                                         callback=lambda path: self.status.setText("已保存资源：" + path)))
+
+    def save_style(self) -> None:
+        self.save_resource("styles")
+
+    def save_template(self) -> None:
+        self.save_resource("templates")
+
+    def add_template(self) -> None:
+        if not self.state:
+            return
+        def add(identity):
+            parent = None
+            if self.selected:
+                location, accepted = QInputDialog.getItem(self, "添加模板", "位置", ["画布顶层", "当前容器内部"], editable=False)
+                if not accepted:
+                    return
+                if location == "当前容器内部":
+                    parent = self.parent_id()
+            self.call("add_template", template_id=identity, parent_id=parent,
+                      base_revision=self.state["document"]["revision"], callback=self.set_state)
+        self.flush(lambda: self.choose_resource("templates", add))
+
+    def export_element(self) -> None:
+        if not self.selected or not self.state:
+            return
+        suggested = default_png_path(Path(self.state["filePath"]), self.selected)
+        path, _ = QFileDialog.getSaveFileName(self, "导出模块 PNG", str(suggested), "PNG (*.png)")
+        if path:
+            self.flush(lambda: self.call("request_export", output_path=path, element_id=self.selected))
 
     def choose_asset(self):
         if self.selected:
@@ -620,7 +762,7 @@ class EditorWindow(QMainWindow):
 
     def restore(self):
         if self.state and self.state.get("candidate"):
-            if QMessageBox.question(self, "恢复当前内容", "拒绝外部修改，将当前 GUI 内容写回 pjt.json？") == QMessageBox.StandardButton.Yes:
+            if QMessageBox.question(self, "恢复当前内容", "拒绝外部修改，将当前 GUI 内容写回图片 JSON？") == QMessageBox.StandardButton.Yes:
                 self.flush(lambda: self.call("resolve_external_change", candidate_id=self.state["candidate"]["id"],
                                             base_revision=self.state["document"]["revision"], choice="restore", callback=self.set_state))
 
@@ -679,9 +821,9 @@ class EditorWindow(QMainWindow):
         self.close()
 
 
-def run_gui(project=None):
+def run_gui(file_path=None, settings=None):
     app = QApplication.instance() or QApplication([])
-    window = EditorWindow(project)
+    window = EditorWindow(file_path, settings=settings)
     window.show()
     return app.exec()
 

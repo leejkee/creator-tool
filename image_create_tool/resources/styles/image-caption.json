@@ -1,0 +1,8 @@
+{
+  "type": "group",
+  "layout": [2, 1],
+  "elements": [
+    {"position": [0, 0], "type": "image", "height": 180, "fit": "contain", "style": {"radius": 8}},
+    {"position": [1, 0], "type": "text", "style": "body"}
+  ]
+}

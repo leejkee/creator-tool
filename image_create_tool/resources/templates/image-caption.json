@@ -1,0 +1,11 @@
+{
+  "module": {
+    "id": "image-caption",
+    "type": "group",
+    "layout": [2, 1],
+    "elements": [
+      {"id": "picture", "position": [0, 0], "type": "image", "height": 180, "fit": "contain", "assetQuery": {"name": "请填写素材名"}},
+      {"id": "caption", "position": [1, 0], "type": "text", "text": "请填写说明", "style": "body"}
+    ]
+  }
+}
