@@ -2,6 +2,8 @@
 
 2026-10-10，由验收子 Agent 在应用实现完成后执行。未运行旧项目的 `make.py` 或 `build_guides.py`。
 
+本页保留当时的执行记录；其中 CLI 命令和测试脚本不作为当前操作入口。当前使用方式见 [README](../README.md)。
+
 ## 输入与来源
 
 原笔记：`C:/Users/31305/Documents/workspace/video-creator/wxq_anqila/script.md`。选择“逐鹿芈月c”对应表格行和 `## 芈月` 全部内容。原始三套笔记完整保存在唯一项目文件 `pjt.json` 的 `sourceNotes` 字段。

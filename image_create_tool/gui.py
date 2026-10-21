@@ -821,9 +821,14 @@ class EditorWindow(QMainWindow):
         self.close()
 
 
-def run_gui(file_path=None, settings=None):
+def run_gui(file_path: Path | None = None, settings=None) -> int:
     app = QApplication.instance() or QApplication([])
     window = EditorWindow(file_path, settings=settings)
     window.show()
     return app.exec()
+
+
+def main() -> int:
+    """Launch the editor; files and application settings are selected in the GUI."""
+    return run_gui()
 

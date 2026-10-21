@@ -8,24 +8,18 @@ PySide6 GUI、文件服务和 Pillow 渲染器在同一进程中协作。每张�
 
 ```powershell
 .venv/Scripts/python.exe -m pip install -e .
-.venv/Scripts/python.exe -m image_create_tool open image_create_tool/resources/example.image.json
-.venv/Scripts/python.exe -m image_create_tool validate --file tool_test/pjt.json
-.venv/Scripts/python.exe -m image_create_tool render --file tool_test/pjt.json
+.venv/Scripts/python.exe -m image_create_tool
 ```
 
-最后两条仅把现有验收 JSON 当作普通文件读取，文件名没有特殊意义。v0.0.1 数据可在内存中转换为组合模块；保存或编辑后写为 v0.1.0。原始笔记及稳定 ID 保留，旧 `itemRow` 子 ID 继续为 `:image`、`:text`。
+安装后也可运行 `guide-editor`，Windows 下该入口使用 GUI 启动器。应用直接进入编辑器，在界面中打开或新建图片 JSON；不提供命令行子命令或参数。
+
+可打开 `image_create_tool/resources/example.image.json` 查看示例，或打开 `tool_test/pjt.json` 查看真实素材验收图片。文件名没有特殊意义。v0.0.1 数据可在内存中转换为组合模块；保存或编辑后写为 v0.1.0。原始笔记及稳定 ID 保留，旧 `itemRow` 子 ID 继续为 `:image`、`:text`。
 
 打开 GUI 后，可新建、保存、另存 JSON，编辑文案、尺寸、图片缩放、布局和样式参数。多选模块可批量应用 Style；也可从模板添加模块、保存新 Style/Template、导出所选模块。预览与正式 PNG 使用同一渲染器。
 
 ## Agent 工作目录
 
-```powershell
-.venv/Scripts/python.exe -m image_create_tool init tool_test/my_guide
-.venv/Scripts/python.exe -m image_create_tool new tool_test/my_guide/guide.json
-.venv/Scripts/python.exe -m image_create_tool open tool_test/my_guide/guide.json
-```
-
-`init` 生成完整的 `AGENTS.md`，包含协议、示例、资源位置和 CLI；已有 AGENTS.md 保留。目录可包含多份图片 JSON/PNG，打开任意 JSON 不要求 AGENTS.md 存在。图片 JSON 的协议见 [JSON_PROTOCOL.md](image_create_tool/resources/JSON_PROTOCOL.md)，可直接复制 [完整示例](image_create_tool/resources/example.image.json)。
+目录可包含多份图片 JSON/PNG，打开任意 JSON 不要求 AGENTS.md 存在。Agent 使用的项目说明自行维护，应用不再提供项目初始化或 AGENTS.md 生成功能。图片 JSON 的协议见 [JSON_PROTOCOL.md](image_create_tool/resources/JSON_PROTOCOL.md)，可直接复制 [完整示例](image_create_tool/resources/example.image.json)。
 
 运行中的 GUI 会发现外部文件变化，提供候选、合并与恢复。用户审阅前，内存编辑不覆盖外部文件，正式导出须先处理候选。历史仅在内存。
 
@@ -33,19 +27,14 @@ PySide6 GUI、文件服务和 Pillow 渲染器在同一进程中协作。每张�
 
 全局配置默认在 Windows `%LOCALAPPDATA%/ImageCreateTool/settings.json`，其他系统在 `~/.config/ImageCreateTool/`。资源默认位于配置目录下的 `resources/styles/`、`resources/templates/`、`resources/scripts/`。
 
-可用 `IMAGE_CREATE_TOOL_HOME` 环境变量或全局参数 `--config-dir <目录>` 选择配置目录；`config set` 和 GUI“应用设置”可指定实际资源目录：
+可在启动前用 `IMAGE_CREATE_TOOL_HOME` 环境变量选择配置目录，在 GUI“应用设置”中指定实际资源目录。验收时使用工作区配置：
 
 ```powershell
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config config show
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config config set --resource-dir resources
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config styles list
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config styles apply --file guide.json --id body --name body
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config styles save --file guide.json --id body --name my-body
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config templates save --file guide.json --id section --name my-section
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config new another.json --template my-section
+$env:IMAGE_CREATE_TOOL_HOME = Join-Path $PWD 'tool_test/app_config'
+.venv/Scripts/python.exe -m image_create_tool
 ```
 
-上述 `body/section` 是目标 JSON 中的模块 ID，使用时替换为实际 ID。内置 `body`、`image-caption` 样式及 `image-caption` 模板可直接选择；模板的图片槽需填写素材。自定义资源优先从全局目录读取；保存新名称不覆盖已有资源。
+通过 GUI“批量应用 Style”“保存为新 Style”“从模板添加模块”“保存为新模板”管理资源。内置 `body`、`image-caption` 样式及 `image-caption` 模板可直接选择；模板的图片槽需填写素材。自定义资源优先从全局目录读取；保存新名称不覆盖已有资源。
 
 Style 可描述最小模块或组合模块。组合 Style 按布局、位置和类型匹配，具体图文可以不同。应用是一次性整体覆盖：源参数及子样式展开写入目标图片 JSON，未给出的旧样式属性恢复默认；内容和 ID 不变。全局 Style 更新不会修改已有图片，用户重新应用才更新。JSON 中临时写 `"style": "body"` 也表示一次性应用请求，加载时通过受保护保存展开，后续不保留动态依赖。
 
@@ -53,14 +42,7 @@ Template 保存完整默认模块，新建/添加时复制并重新生成模块 
 
 ## 素材、布局和绘制
 
-```powershell
-.venv/Scripts/python.exe -m image_create_tool assets search --file guide.json --name 芈月
-.venv/Scripts/python.exe -m image_create_tool assets search --directory tool_test/assets --name 芈月
-.venv/Scripts/python.exe -m image_create_tool layout --file guide.json
-.venv/Scripts/python.exe -m image_create_tool validate --file guide.json
-.venv/Scripts/python.exe -m image_create_tool render --file guide.json
-.venv/Scripts/python.exe -m image_create_tool render --file guide.json --element section --output section.png
-```
+在 GUI 中选择图片模块，使用“替换/选择素材”查询素材，使用“精确裁剪”“模块布局”“画布设置”“样式参数”调整效果。修改后先检查预览与问题提示，再点击“导出 PNG”；单独输出模块使用“导出所选模块”。
 
 素材相对路径以 JSON 所在目录为基准。字体可通过 `fonts.regular/bold` 或文本 `style.font` 指定文件，Windows 默认微软雅黑。
 
@@ -72,7 +54,7 @@ Template 保存完整默认模块，新建/添加时复制并重新生成模块 
 
 ## 终端与文件保护
 
-GUI“打开终端”在当前 JSON 所在目录启动，Windows 默认 `pwsh`。在应用设置或 `config set --terminal` 中指定程序，`terminalArgs` 是参数数组，可用 `{cwd}` 代入目录，例如 Windows Terminal 的 `-d` 参数。启动使用参数数组和实际工作目录，不拼接 shell 命令。
+GUI“打开终端”在当前 JSON 所在目录启动，Windows 默认 `pwsh`。在应用设置中指定程序，`terminalArgs` 是参数数组，可用 `{cwd}` 代入目录，例如 Windows Terminal 的 `-d` 参数。启动使用参数数组和实际工作目录，不拼接 shell 命令。
 
 GUI 对同一个 JSON 使用独立会话锁，同目录不同 JSON 可分别打开。`.文件名.json.lock` 是复用的锁文件，不保存项目状态。写入期间通过同一个受保护句柄检查指纹并原地保存，不保证断电原子性。非法外部 JSON 不清空当前文档或覆盖源文件。
 

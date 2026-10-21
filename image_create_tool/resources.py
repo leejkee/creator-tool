@@ -73,7 +73,7 @@ def build_render_request(path: Path, document: dict, settings: AppSettings, **id
         "filePath": str(path), "baseDir": str(path.parent), "documentSnapshot": copy.deepcopy(document),
         "resources": assets, "extraResources": extras, "scriptsDir": str(settings.scripts_dir),
         "documentId": document["documentId"], "revision": document["revision"], "target": "current",
-        "jobId": "cli", "renderId": "cli", "candidateId": None,
+        "jobId": "render", "renderId": "render", "candidateId": None,
         "contentFingerprint": fingerprint(document), "resourceFingerprint": fingerprint([assets, extras]),
         **identity,
     }
