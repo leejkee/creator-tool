@@ -4,20 +4,19 @@
 
 ## 数据与入口
 
-每张图片有自己的 JSON。GUI 只打开、编辑和保存指定文件，PNG 默认与 JSON 同名、同目录；不查找项目根目录或固定 pjt.json。Agent 可通过 `init <目录>` 建立工作目录和 AGENTS.md，在该目录组织多张图片。初始化与 GUI 文件打开相互独立。
+每张图片有自己的 JSON。GUI 只打开、编辑和保存指定文件，PNG 默认与 JSON 同名、同目录；不查找项目根目录或固定 pjt.json。Agent 可在目录中组织多张图片，自行维护 AGENTS.md。应用通过 `python -m image_create_tool` 或安装后的 `guide-editor` 直接启动 GUI，文件在界面中选择，不提供命令行子命令。
 
 `model.py` 负责校验、规范化、纯文档操作和按稳定 ID 的三方合并。v0.0.1 的 itemRow 和模块标题在规范化时展开为真实子模块，保留派生 ID；不按文件名区分新旧项目。写出的当前协议为 v0.1.0。
 
-`styles.py` 管理本地 Style/Template JSON、匹配、复制与整体应用。样式不继承，应用时展开并保存实际参数，旧属性未指定时恢复默认；正常重开不依赖源 Style。保存新资源使用新名称，不覆盖原资源。`settings.py` 管理全局资源目录和终端参数，环境变量 IMAGE_CREATE_TOOL_HOME 或 --config-dir 可覆盖配置位置。
+`styles.py` 管理本地 Style/Template JSON、匹配、复制与整体应用。样式不继承，应用时展开并保存实际参数，旧属性未指定时恢复默认；正常重开不依赖源 Style。保存新资源使用新名称，不覆盖原资源。`settings.py` 管理全局资源目录和终端参数，环境变量 IMAGE_CREATE_TOOL_HOME 可覆盖配置位置。
 
 ## 单进程与职责
 
 - GUI 主线程：PySide6 控件、文件选择、预览、属性与资源操作、外部变更审阅；通过 Future/事件桥接调用服务，不等待渲染。
 - 服务线程：当前文件、基线、外部候选、内存历史、保存与任务调度；不导入 Qt。每次打开文件建立新会话，旧任务不能更新新文件。
 - 渲染线程：消费独立文档快照、资源路径与指纹，使用 Pillow 测量、排版、裁剪绘制、PNG 编码；不保存 JSON 或更新 GUI。
-- CLI：复用规范化、资源解析及生产渲染入口，按明确命令写 JSON/PNG。
 
-`resources.py` 是 GUI 服务和 CLI 共用的输入与资源快照入口；`typography.py` 统一实际字体解析。素材、字体和脚本在任务前后检查身份。已应用的全局 Style 不参与旧图片的资源身份。
+`resources.py` 是服务的输入与资源快照入口；`typography.py` 统一实际字体解析。素材、字体和脚本在任务前后检查身份。已应用的全局 Style 不参与旧图片的资源身份。
 
 `preprocessing.py` 在渲染工作线程中调用指定 scripts/ 文件函数。输入为 RGBA 副本和命名参数，输出为 Pillow 图片或 PNG 字节；源素材和中间产物不写磁盘。对外部用户脚本错误提供带上下文的失败信息。此版本未实现预处理子进程。
 
@@ -37,6 +36,6 @@
 
 ## 验证和维护
 
-运行方法与 CLI 示例见 [README](../README.md)。先 validate，再 render；实际素材验收位于 tool_test/，不运行旧绘图脚本。当前仓库没有 pytest 测试文件，未经用户要求不新增测试代码。
+运行方法见 [README](../README.md)。修改后先检查 GUI 预览与问题提示，再导出 PNG；实际素材验收位于 tool_test/，不运行旧绘图脚本。当前仓库没有 pytest 测试文件，未经用户要求不新增测试代码。
 
-包内资源通过 setuptools package-data 分发，包括 Agent 模板、协议、示例 Style/Template 和处理脚本；不依赖启动时当前目录查找包内资源。终端的全局配置支持程序与参数数组，工作目录直接取 JSON 父目录，Windows 默认 pwsh。
+包内资源通过 setuptools package-data 分发，包括协议、示例 Style/Template 和处理脚本；不依赖启动时当前目录查找包内资源。`guide-editor` 使用 setuptools 的 GUI 启动器。终端的全局配置支持程序与参数数组，工作目录直接取 JSON 父目录，Windows 默认 pwsh。

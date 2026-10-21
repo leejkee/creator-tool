@@ -3,6 +3,8 @@
 分支：`feat/style-template`。本记录对应本轮实际执行，不代表 GUI 所有按钮均已人工点击。
 未新增或修改测试代码；`pytest --collect-only` 确认仓库没有可收集的测试。
 
+本文中的 CLI 和 Agent 初始化结果属于历史验收；当前应用已移除这些入口，使用 GUI 打开、编辑和导出图片。
+
 ## 文件与素材
 
 - 原始 `tool_test/pjt.json` 保持原样，仅作为普通 JSON 显式打开，没有运行旧绘图脚本。
@@ -34,10 +36,11 @@
 ## 常用复核命令
 
 ```powershell
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config validate --file tool_test/refactor_project/layout.image.json
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config render --file tool_test/refactor_project/layout.image.json
-.venv/Scripts/python.exe -m image_create_tool --config-dir tool_test/app_config open tool_test/refactor_project/layout.image.json
+$env:IMAGE_CREATE_TOOL_HOME = Join-Path $PWD 'tool_test/app_config'
+.venv/Scripts/python.exe -m image_create_tool
 ```
+
+在界面中打开 `tool_test/refactor_project/layout.image.json`，检查预览与问题提示，再导出 PNG。
 
 ## 验证边界
 
