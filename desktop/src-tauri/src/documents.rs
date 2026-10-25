@@ -15,6 +15,7 @@ fn with_store<T>(
     let mut store = state.0.lock().map_err(|_| DocumentError {
         code: "STATE_UNAVAILABLE".into(),
         message: "Document state lock is poisoned; restart the application".into(),
+        issues: Vec::new(),
     })?;
     action(&mut store)
 }
@@ -197,4 +198,12 @@ pub async fn save_document_as(
             &file_name,
         )
     })
+}
+
+/// Validate editor JSON without opening a file or changing any session state.
+#[tauri::command]
+pub async fn validate_image_json(
+    json_text: String,
+) -> creator_document_core::validation::ValidationReport {
+    creator_document_core::validation::validate_json(&json_text)
 }

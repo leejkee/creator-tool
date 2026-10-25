@@ -37,10 +37,11 @@ Rust 是已打开图片文档的唯一权威状态管理者，负责文件 I/O�
 
 ## Tauri 命令契约
 
-前端通过 `@tauri-apps/api/core` 的 invoke 调用；参数使用 camelCase。成功返回快照，包含 `sessionId/path/workingDirectory/document/version/dirty/externalChange`；领域错误拒绝请求并返回 `{code, message}`。参数反序列化失败由 Tauri 报错。
+前端通过 `@tauri-apps/api/core` 的 invoke 调用；参数使用 camelCase。成功返回快照，包含 `sessionId/path/workingDirectory/document/version/dirty/externalChange`；领域错误拒绝请求并返回 `{code, message}`；校验失败时附带全部字段问题 `issues`。参数反序列化失败由 Tauri 报错。
 
 | 命令 | 参数 | 返回 |
 | --- | --- | --- |
+| `validate_image_json` | jsonText（原始 JSON 字符串） | `{valid, issues}`，不修改文件或会话 |
 | `create_document` | moduleName、可选 baseDirectory/sourceSessionId/templatePath | 创建并打开的新文档快照 |
 | `save_document_as` | sessionId、expectedVersion、targetDirectory、fileName | 另存并切换当前会话后的快照 |
 | `open_document` | path（已有文件路径） | 会话快照；重复打开同一路径复用会话 |
@@ -101,7 +102,7 @@ export PKG_CONFIG_PATH=/workspace/tauri-sysroot/root/usr/lib/x86_64-linux-gnu/pk
 
 ## creator-document-core 自动化测试
 
-用户授权后现有 37 个集成测试（JSON 7 个、会话及文件同步 18 个、新建及另存为 12 个），当前全部通过，无失败或跳过。测试位于 `desktop/src-tauri/document-core/tests/`，仅依赖 Rust 核心和开发依赖 tempfile，无需 Tauri、WebView 或 Python。
+用户授权后现有 53 个集成测试（JSON 7 个、会话及文件同步 18 个、新建及另存为 12 个、校验规则 16 个），当前全部通过，无失败或跳过。测试位于 `desktop/src-tauri/document-core/tests/`，仅依赖 Rust 核心和开发依赖 tempfile，无需 Tauri、WebView 或 Python。
 
 - `json_document.rs`：中文与未知字段往返、UTF-8 BOM、非法 JSON/字段类型、协议版本、文档身份、节点 ID、节点类型及叶子节点约束。
 - `document_sessions.rs`：会话复用与隔离、显式保存、无操作提交、补丁语义、拒绝操作的状态完整性、并发版本、revision 溢出、外部候选、格式变化、丢失与不可读文件、基线恢复、重载及关闭保护。
@@ -134,3 +135,33 @@ cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --all-ta
 模块名和文件名禁止空白名称、路径分隔符、控制字符及常见 Windows 非法/保留名称。新建和另存为仅使用 create_new 写入不存在的目标；普通保存的原子替换逻辑不变。初次创建失败会尝试移除本次创建的空目录，不递归清理。
 
 本次新增 12 个生命周期测试，总计 37 个核心集成测试，覆盖未选择目录、并列新建、重新打开、目录冲突、模板复制与资源重定位、非法模板、显式目录优先、另存为命名/冲突/版本保护及外部冲突下保留本地副本。
+
+## 可调整的 JSON 校验规则
+
+规则集中在 `document-core/src/validation.rs`。当前只实现已明确的结构和字段约束，不固定完整渲染协议、不拒绝未知字段、不自动补字段或修改用户数据。后续 JSON 结构调整时，优先修改字段规则表；树形关系等跨字段约束由单独的遍历逻辑处理。
+
+每条 FieldRule 独立描述 name、kind、required、nullable、allow_empty、choices 和错误码。缺失字段与显式 null 不相同；空字符串（非空规则下含纯空白字符串）、空数组和空对象也分别判断，false 与 0 不算空。设置 nullable 不会免除 required，设置 allow_empty 不会允许 null。
+
+当前启用：
+
+| 字段 | 存在性与空值规则 | 枚举/结构规则 |
+| --- | --- | --- |
+| image-create-tool-version | 必须有，非空字符串，不接受 null | v0.1.0 |
+| documentId、节点 id | 必须有，非空字符串，不接受 null | 节点 ID 在整棵树中唯一 |
+| revision | 必须有，不接受 null | u64 非负整数 |
+| composition | 必须有，不接受 null，允许空对象 | 仅校验对象类型，内部画布参数暂不收紧 |
+| modules | 必须有，不接受 null，允许空数组 | 递归校验节点 |
+| 节点 type | 必须有，非空字符串，不接受 null | text / image / rect / group |
+| text 节点的 text | 必须有，允许空字符串，不接受 null | 字符串 |
+| elements | 可省略，允许空数组，不接受 null | 数组；叶子节点不可含非空子节点 |
+| fit | 可省略，出现时不可为 null 或空字符串 | contain / cover / stretch / height / width |
+| layout | 可省略，出现时不可为 null | 对象或正整数二元数组；对象 type 可省略，出现时为 column / row / grid / fixed |
+| style.align | style 为对象时检查；可省略，出现时不可为 null 或空字符串 | left / center / right |
+
+“必须有但可为空”已由 modules、text 等字段体现。规则框架也支持“必须有且允许 null”，但目前没有擅自将已有字段改成可为 null。字段类型与非空约束通过后才判断枚举，避免同一字段产生重复的连带错误。
+
+报告包含 valid 和 issues；每个问题含 code、rule、path、message。path 使用 RFC 6901 JSON Pointer，例如 `/modules/0/elements/1/style/align`；根路径为空字符串。rule 区分 missingField、nullNotAllowed、invalidType、emptyValue、invalidEnum，以及重复 ID、叶节点含子节点、布局形状和 JSON 语法错误。
+
+validate_image_json 可在不打开文件时检查原始文本并一次返回所有问题，支持 UTF-8 BOM；文本语法/重复结构字段无法解析时返回 INVALID_JSON。读文件仍先进行强类型反序列化，字段缺失/类型错误保留已有 INVALID_JSON 顶层错误码，并在能够解析成 JSON 时附带字段诊断。模型编辑、编码、创建/另存为、外部文件候选及重载也使用同一规则层；失败不提交文档修改或覆盖文件。
+
+新增 16 个校验测试，总计 53 个通过。仍未完整校验数值范围、布局容量及位置关系、样式对象的全部属性、资源可用性或渲染效果；这些留待协议进一步确定。

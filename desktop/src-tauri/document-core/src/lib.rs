@@ -1,9 +1,10 @@
 //! Authoritative image document sessions, independent of Tauri and rendering.
 mod lifecycle;
+pub mod validation;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::BTreeMap,
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -14,12 +15,15 @@ use std::{
 pub struct DocumentError {
     pub code: String,
     pub message: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub issues: Vec<validation::ValidationIssue>,
 }
 impl DocumentError {
     fn new(code: &str, message: impl ToString) -> Self {
         Self {
             code: code.into(),
             message: message.to_string(),
+            issues: Vec::new(),
         }
     }
 }
@@ -52,47 +56,20 @@ pub struct Node {
 impl ImageDocument {
     pub fn parse(bytes: &[u8]) -> Result<Self> {
         let bytes = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(bytes);
-        let document: Self =
-            serde_json::from_slice(bytes).map_err(|e| DocumentError::new("INVALID_JSON", e))?;
+        let document: Self = serde_json::from_slice(bytes).map_err(|e| {
+            let mut error = DocumentError::new("INVALID_JSON", e);
+            if let Ok(value) = serde_json::from_slice::<Value>(bytes) {
+                error.issues = validation::validate_document(&value).issues;
+            }
+            error
+        })?;
         document.validate()?;
         Ok(document)
     }
     pub fn validate(&self) -> Result<()> {
-        if self.format != "v0.1.0" {
-            return Err(DocumentError::new("UNSUPPORTED_FORMAT", &self.format));
-        }
-        if self.document_id.trim().is_empty() {
-            return Err(DocumentError::new(
-                "INVALID_DOCUMENT",
-                "documentId must not be empty",
-            ));
-        }
-        fn visit(nodes: &[Node], ids: &mut HashSet<String>) -> Result<()> {
-            for node in nodes {
-                if node.id.trim().is_empty() || !ids.insert(node.id.clone()) {
-                    return Err(DocumentError::new("INVALID_NODE_ID", &node.id));
-                }
-                if !matches!(node.kind.as_str(), "text" | "image" | "rect" | "group") {
-                    return Err(DocumentError::new("INVALID_NODE_TYPE", &node.kind));
-                }
-                if node.kind != "group" && !node.elements.is_empty() {
-                    return Err(DocumentError::new(
-                        "INVALID_NODE",
-                        format!("{}: leaf has children", node.id),
-                    ));
-                }
-                if node.kind == "text" && !node.properties.get("text").is_some_and(Value::is_string)
-                {
-                    return Err(DocumentError::new(
-                        "INVALID_NODE",
-                        format!("{}: text must be a string", node.id),
-                    ));
-                }
-                visit(&node.elements, ids)?;
-            }
-            Ok(())
-        }
-        visit(&self.modules, &mut HashSet::new())
+        let value =
+            serde_json::to_value(self).map_err(|e| DocumentError::new("SERIALIZE_FAILED", e))?;
+        validation::validate_document(&value).into_result()
     }
     pub fn encode(&self) -> Result<Vec<u8>> {
         self.validate()?;
@@ -118,7 +95,7 @@ pub enum ExternalChange {
 // Error equality lets polling suppress duplicate notifications.
 impl PartialEq for DocumentError {
     fn eq(&self, other: &Self) -> bool {
-        self.code == other.code && self.message == other.message
+        self.code == other.code && self.message == other.message && self.issues == other.issues
     }
 }
 
