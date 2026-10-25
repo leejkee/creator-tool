@@ -1,5 +1,5 @@
 import { ImageProcessingError } from "./errors";
-import type { ImageSource } from "./types";
+import type { CropCircle, ImageSource } from "./types";
 
 export function requirePositive(value: number, name: string): void {
   if (!Number.isFinite(value) || value <= 0) {
@@ -50,4 +50,25 @@ export function createSurface(
     throw new ImageProcessingError("CANVAS_UNAVAILABLE", "Cannot create the output Canvas 2D context");
   }
   return { canvas, context };
+}
+
+/** Shared circle geometry for cropping and selective blur. */
+export function requireCircleWithinSource(
+  circle: CropCircle,
+  size: { readonly width: number; readonly height: number },
+): void {
+  if (circle === null || typeof circle !== "object") {
+    throw new ImageProcessingError("INVALID_IMAGE_ARGUMENT", "Circle center and radius are required");
+  }
+  const { centerX, centerY, radius } = circle;
+  if (!Number.isFinite(centerX) || centerX < 0 || !Number.isFinite(centerY) || centerY < 0) {
+    throw new ImageProcessingError("INVALID_IMAGE_ARGUMENT", "Circle center coordinates must be finite and nonnegative");
+  }
+  requirePositive(radius, "radius");
+  if (
+    radius > centerX || radius > centerY ||
+    radius > size.width - centerX || radius > size.height - centerY
+  ) {
+    throw new ImageProcessingError("CROP_OUT_OF_BOUNDS", "The whole circle must fit inside the source image");
+  }
 }

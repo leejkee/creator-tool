@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Rust 后端 | 处理描述图片的 JSON | 已实现基础文档业务 |
 | TypeScript 前端 | 替代 PySide6 GUI | 已定义只读数据契约，GUI 后续迁移 |
-| TypeScript 图片合成器 | 使用 Web 绘图工具，预览与导出共用合成逻辑 | 基础裁剪/缩放工具已实现，完整布局与合成后续迁移 |
+| TypeScript 图片合成器 | 使用 Web 绘图工具，预览与导出共用合成逻辑 | 基础裁剪/缩放/模糊工具已实现，完整布局与合成后续迁移 |
 
 这是迁移目标，不表示相关功能已实现。Rust JSON 实现设计与接口见 [Tauri 开发文档](tauri-dev.md)；不直接沿用 Python 线程模型、Qt 桥接、Pillow 绘制或 Windows 文件句柄机制作为新架构要求。
 
@@ -36,4 +36,4 @@
 
 ## TypeScript 图片处理
 
-`desktop/src/image-tools/` 提供矩形裁剪、居中圆形裁剪与等比例缩放。函数消费已解码图片，返回独立画布；不修改图片文档或 Rust 会话。API、参数及验证范围见 [TS 图片处理工具](ts-image-tools.md)。
+`desktop/src/image-tools/` 提供矩形裁剪、指定圆心的圆形裁剪、等比例缩放与整图/圆外模糊。函数消费已解码图片，返回独立画布；不修改图片文档或 Rust 会话。API、参数及验证范围见 [TS 图片处理工具](ts-image-tools.md)。

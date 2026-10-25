@@ -12,11 +12,19 @@
     "圆形输出尺寸",
     "缩小输出尺寸",
     "放大输出尺寸",
+    "整图模糊尺寸不变",
+    "圆内清晰模式尺寸不变",
+    "整图产生模糊效果",
+    "指定圆心保持原图清晰像素",
+    "圆外使用模糊像素",
+    "模糊不产生透明边缘",
+    "清晰圆周不产生透明接缝",
     "圆外透明 0,0",
-    "圆外透明 479,0",
-    "圆外透明 0,479",
-    "圆外透明 479,479",
+    "圆外透明 383,0",
+    "圆外透明 0,383",
+    "圆外透明 383,383",
     "圆内保留图像",
+    "圆心对应指定原图坐标",
     "矩形像素与原图区域一致",
     "输入像素未修改"
   ],
@@ -38,11 +46,13 @@
       "fileName": "circle.png",
       "operation": "cropCircle",
       "parameters": {
-        "radius": 240
+        "centerX": 240,
+        "centerY": 224,
+        "radius": 192
       },
-      "width": 480,
-      "height": 480,
-      "sha256": "229eda7eec72c9c08459a2f3730bf7377655dc3ac51b9278a9239de29b24bd8f"
+      "width": 384,
+      "height": 384,
+      "sha256": "440e9a8fee6b3183b11579cb3c5aea589df8de51f5808b0dc57704b25aa1c656"
     },
     {
       "fileName": "scale-half.png",
@@ -63,6 +73,31 @@
       "width": 1088,
       "height": 1088,
       "sha256": "ac1cadb7a5b8d9d330445817516399bf42ac558db25bb0832ce0825898e17eaa"
+    },
+    {
+      "fileName": "blur.png",
+      "operation": "blurImage",
+      "parameters": {
+        "blurRadius": 12
+      },
+      "width": 544,
+      "height": 544,
+      "sha256": "6e5ae31afe1166fe02c6a2b87c154305cadbd938856cbbf6118bb34434c46014"
+    },
+    {
+      "fileName": "blur-clear-circle.png",
+      "operation": "blurImage",
+      "parameters": {
+        "blurRadius": 12,
+        "clearCircle": {
+          "centerX": 240,
+          "centerY": 224,
+          "radius": 128
+        }
+      },
+      "width": 544,
+      "height": 544,
+      "sha256": "5d2d704d35ebcd80eb0cc6953803df4c367481293c96ad8af2905dfe4b8324e0"
     }
   ]
 }

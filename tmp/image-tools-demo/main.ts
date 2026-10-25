@@ -1,9 +1,9 @@
-import { cropCircle, cropRectangle, scaleImage } from "../../desktop/src/image-tools";
+import { blurImage, cropCircle, cropRectangle, scaleImage } from "../../desktop/src/image-tools";
 
 interface DemoImage {
   readonly fileName: string;
   readonly operation: string;
-  readonly parameters: Readonly<Record<string, number>>;
+  readonly parameters: Readonly<Record<string, unknown>>;
   readonly width: number;
   readonly height: number;
   readonly pngDataUrl: string;
@@ -44,18 +44,36 @@ async function main(): Promise<void> {
   };
   check("原图尺寸", width === 544 && height === 544);
   const rectangle = cropRectangle(source, { x: 96, y: 32, width: 352, height: 384 });
-  const circle = cropCircle(source, 240);
+  const circle = cropCircle(source, { centerX: 240, centerY: 224, radius: 192 });
   const smaller = scaleImage(source, 0.5);
   const larger = scaleImage(source, 2);
+  const blurred = blurImage(source, { blurRadius: 12 });
+  const focused = blurImage(source, {
+    blurRadius: 12,
+    clearCircle: { centerX: 240, centerY: 224, radius: 128 },
+  });
   check("矩形输出尺寸", rectangle.width === 352 && rectangle.height === 384);
-  check("圆形输出尺寸", circle.width === 480 && circle.height === 480);
+  check("圆形输出尺寸", circle.width === 384 && circle.height === 384);
   check("缩小输出尺寸", smaller.width === 272 && smaller.height === 272);
   check("放大输出尺寸", larger.width === 1088 && larger.height === 1088);
+  check("整图模糊尺寸不变", blurred.width === width && blurred.height === height);
+  check("圆内清晰模式尺寸不变", focused.width === width && focused.height === height);
+  const blurredPixels = blurred.getContext("2d")!.getImageData(0, 0, width, height).data;
+  const focusedPixels = focused.getContext("2d")!.getImageData(0, 0, width, height).data;
+  check("整图产生模糊效果", blurredPixels.some((value, index) => value !== before[index]));
+  const centerOffset = (224 * width + 240) * 4;
+  check("指定圆心保持原图清晰像素", focusedPixels.slice(centerOffset, centerOffset + 4).every((value, index) => value === before[centerOffset + index]));
+  check("圆外使用模糊像素", focusedPixels.slice(0, 4).every((value, index) => value === blurredPixels[index]));
+  check("模糊不产生透明边缘", blurredPixels.every((value, index) => index % 4 !== 3 || value === 255));
+  check("清晰圆周不产生透明接缝", focusedPixels.every((value, index) => index % 4 !== 3 || value === 255));
   const circleContext = circle.getContext("2d")!;
-  for (const [x, y] of [[0, 0], [479, 0], [0, 479], [479, 479]]) {
+  for (const [x, y] of [[0, 0], [383, 0], [0, 383], [383, 383]]) {
     check(`圆外透明 ${x},${y}`, circleContext.getImageData(x, y, 1, 1).data[3] === 0);
   }
-  check("圆内保留图像", circleContext.getImageData(240, 240, 1, 1).data[3] === 255);
+  check("圆内保留图像", circleContext.getImageData(192, 192, 1, 1).data[3] === 255);
+  const circleCenter = circleContext.getImageData(192, 192, 1, 1).data;
+  const sourceCenter = original.getContext("2d")!.getImageData(240, 224, 1, 1).data;
+  check("圆心对应指定原图坐标", circleCenter.every((value, index) => value === sourceCenter[index]));
   const cropPixels = rectangle.getContext("2d")!.getImageData(0, 0, 352, 384).data;
   const expectedPixels = original.getContext("2d")!.getImageData(96, 32, 352, 384).data;
   check("矩形像素与原图区域一致", cropPixels.every((value, index) => value === expectedPixels[index]));
@@ -65,9 +83,11 @@ async function main(): Promise<void> {
   check("输入像素未修改", before.every((value, index) => value === after[index]));
   const outputs = [
     { fileName: "rectangle.png", operation: "cropRectangle", parameters: { x: 96, y: 32, width: 352, height: 384 }, canvas: rectangle },
-    { fileName: "circle.png", operation: "cropCircle", parameters: { radius: 240 }, canvas: circle },
+    { fileName: "circle.png", operation: "cropCircle", parameters: { centerX: 240, centerY: 224, radius: 192 }, canvas: circle },
     { fileName: "scale-half.png", operation: "scaleImage", parameters: { ratio: 0.5 }, canvas: smaller },
     { fileName: "scale-double.png", operation: "scaleImage", parameters: { ratio: 2 }, canvas: larger },
+    { fileName: "blur.png", operation: "blurImage", parameters: { blurRadius: 12 }, canvas: blurred },
+    { fileName: "blur-clear-circle.png", operation: "blurImage", parameters: { blurRadius: 12, clearCircle: { centerX: 240, centerY: 224, radius: 128 } }, canvas: focused },
   ] as const;
   const images: DemoImage[] = outputs.map(({ fileName, operation, parameters, canvas }) => {
     show(`${fileName} ${canvas.width}×${canvas.height}`, canvas);

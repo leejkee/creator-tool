@@ -22,4 +22,4 @@ CARGO_TARGET_DIR=/tmp/creator-miyue-demo-target cargo run --manifest-path tmp/Ca
 
 ## TS 图片处理实图示例
 
-[image-tools-demo/](image-tools-demo/README.md) 保存安琪拉原图，以及通过真实 TS 工具生成的矩形裁剪、圆形裁剪、0.5 倍和 2 倍缩放 PNG；附有参数、哈希记录和可重复运行脚本。
+[image-tools-demo/](image-tools-demo/README.md) 保存安琪拉原图，以及通过真实 TS 工具生成的矩形裁剪、圆形裁剪、0.5 倍和 2 倍缩放、整图模糊及圆内清晰的局部模糊 PNG；附有参数、哈希记录和可重复运行脚本。

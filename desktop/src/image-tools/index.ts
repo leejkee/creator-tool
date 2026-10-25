@@ -1,3 +1,6 @@
+export { blurImage } from "./blur";
 export { ImageProcessingError } from "./errors";
-export { cropCircle, cropRectangle, scaleImage } from "./operations";
-export type { CropRectangle, ImageProcessingErrorCode, ImageSource } from "./types";
+export { cropCircle } from "./crop-circle";
+export { cropRectangle } from "./crop-rectangle";
+export { scaleImage } from "./scale-image";
+export type { BlurOptions, CropCircle, CropRectangle, ImageProcessingErrorCode, ImageSource } from "./types";

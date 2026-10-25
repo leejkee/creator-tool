@@ -7,9 +7,11 @@ main.ts 直接导入 `desktop/src/image-tools`，在浏览器 Canvas 环境中�
 | 文件 | 实际调用参数 | 输出尺寸 |
 | --- | --- | --- |
 | rectangle.png | cropRectangle，x=96、y=32、width=352、height=384 | 352×384 |
-| circle.png | cropCircle，radius=240，圆心为原图中心 | 480×480，圆外透明 |
+| circle.png | cropCircle，centerX=240、centerY=224、radius=192 | 384×384，圆外透明 |
 | scale-half.png | scaleImage，ratio=0.5 | 272×272 |
 | scale-double.png | scaleImage，ratio=2 | 1088×1088 |
+| blur.png | blurImage，blurRadius=12，整图模糊 | 544×544 |
+| blur-clear-circle.png | blurImage，blurRadius=12，clearCircle 为 (240,224)、radius=128 | 544×544，圆内清晰、圆外模糊 |
 
 各项处理均独立使用 original.png，没有先裁剪再缩放。results.json 记录源文件、输出尺寸、参数、SHA-256 和通过的检查项目。原图来源和仓库内原件均保持不变。
 
@@ -32,4 +34,4 @@ run.mjs 启动仅监听回环地址的 Vite 服务和无头 Chromium，使用浏
 
 这段脚本是开发期的实际素材演示，不是产品运行时的一部分，也未接入 Vue 编辑器或 Rust 文档会话。index.html 提供查看示例的临时页面，不改变应用界面。
 
-本次执行通过 12 项检查：原图与四种输出尺寸、圆外透明/圆内保留像素、矩形裁剪逐像素对应原图区域，以及输入像素不变。运行后重新核对 original.png 与仓库源文件的字节哈希。
+本次执行通过 20 项检查：原图与四种输出尺寸、圆外透明/圆内保留像素/圆心对应指定原图坐标、矩形裁剪逐像素对应原图区域，以及输入像素不变；另检查整图模糊已改变像素、圆内对应原图、圆外对应模糊图、无透明边框及圆周透明接缝。运行后重新核对 original.png 与仓库源文件的字节哈希。
