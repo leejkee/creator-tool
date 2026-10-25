@@ -128,7 +128,7 @@ fn template_creation_preserves_content_and_rebases_resources_without_editing_tem
     template
         .properties
         .insert("fonts".into(), json!({"regular":"fonts/main.ttf"}));
-    template.modules[0].elements[1].properties.insert(
+    template.modules[0].children[1].module.properties.insert(
         "style".into(),
         json!({"font":"fonts/override.ttf","background":{"type":"image","assetPath":"bg.png"}}),
     );
@@ -149,9 +149,9 @@ fn template_creation_preserves_content_and_rebases_resources_without_editing_tem
         created.document.properties["futureDocumentField"],
         template.properties["futureDocumentField"]
     );
-    assert_eq!(created.document.modules[0].elements[1].id, "body");
+    assert_eq!(created.document.modules[0].children[1].module.id, "body");
     assert_eq!(
-        created.document.modules[0].elements[1].properties["text"],
+        created.document.modules[0].children[1].module.properties["text"],
         "正文"
     );
     assert_eq!(
@@ -162,7 +162,7 @@ fn template_creation_preserves_content_and_rebases_resources_without_editing_tem
         created.document.properties["fonts"]["regular"],
         json!(source.join("fonts/main.ttf"))
     );
-    let style = &created.document.modules[0].elements[1].properties["style"];
+    let style = &created.document.modules[0].children[1].module.properties["style"];
     assert_eq!(style["font"], json!(source.join("fonts/override.ttf")));
     assert_eq!(
         style["background"]["assetPath"],
@@ -273,7 +273,7 @@ fn save_as_can_rescue_local_edits_from_external_conflict_and_switches_session_on
     assert!(!saved.dirty);
     assert!(saved.external_change.is_none());
     assert_eq!(
-        saved.document.modules[0].elements[1].properties["text"],
+        saved.document.modules[0].children[1].module.properties["text"],
         "本地修改"
     );
     assert_eq!(

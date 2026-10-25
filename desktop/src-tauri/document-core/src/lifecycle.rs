@@ -100,18 +100,20 @@ fn rebase_document(doc: &mut ImageDocument, source: &Path) {
     {
         absolute_reference(path, source);
     }
-    fn visit(nodes: &mut [Node], source: &Path) {
-        for node in nodes {
-            if let Some(path) = node.properties.get_mut("assetPath") {
-                absolute_reference(path, source);
-            }
-            if let Some(style) = node.properties.get_mut("style") {
-                rebase_style(style, source);
-            }
-            visit(&mut node.elements, source);
+    fn visit(node: &mut Node, source: &Path) {
+        if let Some(path) = node.properties.get_mut("assetPath") {
+            absolute_reference(path, source);
+        }
+        if let Some(style) = node.properties.get_mut("style") {
+            rebase_style(style, source);
+        }
+        for placed in &mut node.children {
+            visit(&mut placed.module, source);
         }
     }
-    visit(&mut doc.modules, source);
+    for node in &mut doc.modules {
+        visit(node, source);
+    }
 }
 
 fn write_new(path: &Path, document: &ImageDocument) -> Result<Vec<u8>> {
@@ -230,7 +232,7 @@ impl DocumentStore {
             doc
         } else {
             ImageDocument {
-                format: "v0.1.0".into(),
+                format: DOCUMENT_VERSION.into(),
                 document_id: String::new(),
                 revision: 0,
                 composition:

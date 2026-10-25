@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 
 pub fn document_value() -> Value {
     json!({
-        "image-create-tool-version": "v0.1.0",
+        "image-create-tool-version": creator_document_core::DOCUMENT_VERSION,
         "documentId": "example-image",
         "revision": 0,
         "title": "图片示例",
@@ -12,9 +12,9 @@ pub fn document_value() -> Value {
         "futureDocumentField": {"enabled": true},
         "modules": [{
             "id": "section", "type": "group", "layout": [2, 1],
-            "elements": [
-                {"id": "heading", "type": "text", "text": "标题", "style": {"fontSize": 44}},
-                {"id": "body", "type": "text", "text": "正文", "style": {"color": "#FFFFFF"}, "futureNodeField": [1, 2]}
+            "children": [
+                {"position":[0,0], "module":{"id": "heading", "type": "text", "text": "标题", "style": {"fontSize": 44}}},
+                {"position":[1,0], "module":{"id": "body", "type": "text", "text": "正文", "style": {"color": "#FFFFFF"}, "futureNodeField": [1, 2]}}
             ]
         }]
     })

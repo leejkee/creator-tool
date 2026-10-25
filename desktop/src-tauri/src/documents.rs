@@ -67,10 +67,14 @@ pub async fn replace_document(
     state: State<'_, Documents>,
     session_id: String,
     expected_version: u64,
-    document: ImageDocument,
+    document: Value,
 ) -> Result<Snapshot> {
     mutate(&app, &state, &session_id, |store| {
-        store.replace(&session_id, expected_version, document)
+        store.replace(
+            &session_id,
+            expected_version,
+            ImageDocument::from_value(document)?,
+        )
     })
 }
 #[tauri::command]
@@ -206,4 +210,39 @@ pub async fn validate_image_json(
     json_text: String,
 ) -> creator_document_core::validation::ValidationReport {
     creator_document_core::validation::validate_json(&json_text)
+}
+
+#[tauri::command]
+pub async fn set_group_layout(
+    app: AppHandle,
+    state: State<'_, Documents>,
+    session_id: String,
+    expected_version: u64,
+    group_id: String,
+    layout: (u32, u32),
+) -> Result<Snapshot> {
+    mutate(&app, &state, &session_id, |store| {
+        store.set_group_layout(&session_id, expected_version, &group_id, layout)
+    })
+}
+
+#[tauri::command]
+pub async fn set_module_position(
+    app: AppHandle,
+    state: State<'_, Documents>,
+    session_id: String,
+    expected_version: u64,
+    group_id: String,
+    module_id: String,
+    position: (u32, u32),
+) -> Result<Snapshot> {
+    mutate(&app, &state, &session_id, |store| {
+        store.set_module_position(
+            &session_id,
+            expected_version,
+            &group_id,
+            &module_id,
+            position,
+        )
+    })
 }

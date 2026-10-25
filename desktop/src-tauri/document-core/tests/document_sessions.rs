@@ -78,7 +78,8 @@ fn edits_are_in_memory_until_save_and_preserve_other_content() {
     assert_eq!((edited.version, edited.document.revision), (1, 1));
     let mut expected = w.initial.document.clone();
     expected.revision = 1;
-    expected.modules[0].elements[1]
+    expected.modules[0].children[1]
+        .module
         .properties
         .insert("text".into(), json!("Rust 中文修改"));
     assert_eq!(edited.document, expected);
@@ -117,7 +118,7 @@ fn no_op_edit_and_clean_save_do_not_advance_versions_or_reformat_the_file() {
 fn patches_replace_nested_properties_and_null_removes_optional_properties() {
     let mut w = Workspace::new();
     let state = w.edit(0, json!({"style":{"fontSize":20},"futureNodeField":null}));
-    let properties = &state.document.modules[0].elements[1].properties;
+    let properties = &state.document.modules[0].children[1].module.properties;
     assert_eq!(properties["style"], json!({"fontSize":20}));
     assert!(!properties.contains_key("futureNodeField"));
     assert_eq!(properties["text"], "正文");
@@ -126,7 +127,7 @@ fn patches_replace_nested_properties_and_null_removes_optional_properties() {
 #[test]
 fn rejected_patches_are_atomic() {
     let mut w = Workspace::new();
-    for key in ["id", "type", "elements"] {
+    for key in ["id", "type", "elements", "children", "layout", "position"] {
         assert_error(
             w.store.patch_node(
                 &w.initial.session_id,
@@ -166,10 +167,10 @@ fn rejected_patches_are_atomic() {
 fn whole_document_edits_allow_structure_changes_but_preserve_identity_and_revision_ownership() {
     let mut w = Workspace::new();
     let mut changed = w.initial.document.clone();
-    changed.modules[0].elements.pop();
+    changed.modules[0].children.pop();
     changed.composition.insert("width".into(), json!(800));
     let updated = w.store.replace(&w.initial.session_id, 0, changed).unwrap();
-    assert_eq!(updated.document.modules[0].elements.len(), 1);
+    assert_eq!(updated.document.modules[0].children.len(), 1);
     assert_eq!(updated.document.composition["width"], 800);
     for field in ["identity", "format", "revision", "duplicate"] {
         let mut invalid = updated.document.clone();

@@ -1,4 +1,5 @@
 //! Authoritative image document sessions, independent of Tauri and rendering.
+mod grid;
 mod lifecycle;
 pub mod validation;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,9 @@ impl DocumentError {
 }
 pub type Result<T> = std::result::Result<T, DocumentError>;
 
+/// Grid placement is a breaking change from the Python image format.
+pub const DOCUMENT_VERSION: &str = "v0.2.0";
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ImageDocument {
     #[serde(rename = "image-create-tool-version")]
@@ -48,22 +52,52 @@ pub struct Node {
     #[serde(rename = "type")]
     pub kind: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub elements: Vec<Node>,
+    pub children: Vec<PlacedModule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<(u32, u32)>,
+    #[serde(flatten)]
+    pub properties: Map<String, Value>,
+}
+
+/// A module's location belongs to its parent container, not to the module content.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PlacedModule {
+    pub position: (u32, u32),
+    pub module: Node,
     #[serde(flatten)]
     pub properties: Map<String, Value>,
 }
 
 impl ImageDocument {
+    pub fn from_value(value: Value) -> Result<Self> {
+        validation::validate_document(&value).into_result()?;
+        serde_json::from_value(value).map_err(|e| DocumentError::new("INVALID_JSON", e))
+    }
     pub fn parse(bytes: &[u8]) -> Result<Self> {
         let bytes = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(bytes);
+        let value: Value =
+            serde_json::from_slice(bytes).map_err(|e| DocumentError::new("INVALID_JSON", e))?;
+        let report = validation::validate_document(&value);
+        if value
+            .get("image-create-tool-version")
+            .and_then(Value::as_str)
+            .is_some_and(|version| version != DOCUMENT_VERSION)
+        {
+            let mut error = DocumentError::new(
+                "UNSUPPORTED_FORMAT",
+                "Expected image-create-tool-version v0.2.0",
+            );
+            error.issues = report.issues;
+            return Err(error);
+        }
+        // Deserialize the original text to retain duplicate structural field checks.
         let document: Self = serde_json::from_slice(bytes).map_err(|e| {
             let mut error = DocumentError::new("INVALID_JSON", e);
-            if let Ok(value) = serde_json::from_slice::<Value>(bytes) {
-                error.issues = validation::validate_document(&value).issues;
-            }
+            error.issues = report.issues.clone();
             error
         })?;
-        document.validate()?;
+        // Check raw JSON before optional/defaulted fields lose presence information.
+        report.into_result()?;
         Ok(document)
     }
     pub fn validate(&self) -> Result<()> {
@@ -282,28 +316,19 @@ impl DocumentStore {
     ) -> Result<Snapshot> {
         let session = self.session(id)?;
         session.require_version(expected)?;
-        if patch
-            .keys()
-            .any(|key| matches!(key.as_str(), "id" | "type" | "elements"))
-        {
+        if patch.keys().any(|key| {
+            matches!(
+                key.as_str(),
+                "id" | "type" | "elements" | "children" | "layout" | "position" | "module" | "span"
+            )
+        }) {
             return Err(DocumentError::new(
                 "STRUCTURAL_PATCH",
                 "Use replace_document for structural edits",
             ));
         }
-        fn find<'a>(nodes: &'a mut [Node], id: &str) -> Option<&'a mut Node> {
-            for node in nodes {
-                if node.id == id {
-                    return Some(node);
-                }
-                if let Some(found) = find(&mut node.elements, id) {
-                    return Some(found);
-                }
-            }
-            None
-        }
         let mut doc = session.state.document.clone();
-        let node = find(&mut doc.modules, node_id)
+        let node = grid::find_node_mut(&mut doc.modules, node_id)
             .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", node_id))?;
         for (key, value) in patch {
             if value.is_null() {

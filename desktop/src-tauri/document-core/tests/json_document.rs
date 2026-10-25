@@ -45,7 +45,7 @@ fn unsupported_format_and_empty_document_identity_are_rejected() {
     let mut doc = document();
     doc.format = "v0.0.1".into();
     assert_error(doc.validate(), "UNSUPPORTED_FORMAT");
-    doc.format = "v0.1.0".into();
+    doc.format = creator_document_core::DOCUMENT_VERSION.into();
     doc.document_id = "  \n".into();
     assert_error(doc.validate(), "INVALID_DOCUMENT");
 }
@@ -53,11 +53,11 @@ fn unsupported_format_and_empty_document_identity_are_rejected() {
 #[test]
 fn node_ids_must_be_nonempty_and_unique_across_the_entire_tree() {
     let mut doc = document();
-    doc.modules[0].elements[1].id = "section".into();
+    doc.modules[0].children[1].module.id = "section".into();
     assert_error(doc.validate(), "INVALID_NODE_ID");
-    doc.modules[0].elements[1].id = "heading".into();
+    doc.modules[0].children[1].module.id = "heading".into();
     assert_error(doc.validate(), "INVALID_NODE_ID");
-    doc.modules[0].elements[1].id = "  ".into();
+    doc.modules[0].children[1].module.id = "  ".into();
     assert_error(doc.encode(), "INVALID_NODE_ID");
 }
 
@@ -67,13 +67,15 @@ fn invalid_node_types_leaf_children_and_nonstring_text_are_rejected() {
     doc.modules[0].kind = "itemRow".into();
     assert_error(doc.validate(), "INVALID_NODE_TYPE");
     doc.modules[0].kind = "rect".into();
+    doc.modules[0].layout = None;
     assert_error(doc.validate(), "INVALID_NODE");
     let mut doc = document();
-    doc.modules[0].elements[1]
+    doc.modules[0].children[1]
+        .module
         .properties
         .insert("text".into(), json!(42));
     assert_error(doc.validate(), "INVALID_NODE");
-    doc.modules[0].elements[1].properties.remove("text");
+    doc.modules[0].children[1].module.properties.remove("text");
     assert_error(doc.validate(), "INVALID_NODE");
 }
 
@@ -81,9 +83,12 @@ fn invalid_node_types_leaf_children_and_nonstring_text_are_rejected() {
 fn all_current_node_types_can_be_serialized() {
     let mut doc = document();
     for (index, kind) in ["image", "rect", "group"].iter().enumerate() {
-        let mut node = doc.modules[0].elements[0].clone();
+        let mut node = doc.modules[0].children[0].module.clone();
         node.id = format!("extra-{index}");
         node.kind = kind.to_string();
+        if *kind == "group" {
+            node.layout = Some((1, 1));
+        }
         doc.modules.push(node);
     }
     assert_eq!(ImageDocument::parse(&doc.encode().unwrap()).unwrap(), doc);

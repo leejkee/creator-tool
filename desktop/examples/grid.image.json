@@ -1,0 +1,35 @@
+{
+  "image-create-tool-version": "v0.2.0",
+  "documentId": "grid-example",
+  "revision": 0,
+  "title": "网格布局示例",
+  "sourceNotes": "",
+  "composition": {"width": 1200, "height": "auto"},
+  "modules": [
+    {
+      "id": "overview",
+      "type": "group",
+      "layout": [2, 2],
+      "gap": 16,
+      "children": [
+        {
+          "position": [0, 0],
+          "module": {"id": "heading", "type": "text", "text": "图片说明"}
+        },
+        {
+          "position": [0, 1],
+          "module": {
+            "id": "details",
+            "type": "group",
+            "layout": [3, 1],
+            "children": [
+              {"position": [0, 0], "module": {"id": "detail-1", "type": "text", "text": "第一条"}},
+              {"position": [1, 0], "module": {"id": "detail-2", "type": "text", "text": "第二条"}},
+              {"position": [2, 0], "module": {"id": "detail-3", "type": "text", "text": "第三条"}}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

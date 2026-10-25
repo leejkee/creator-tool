@@ -2,7 +2,8 @@
 
 - 当前迁移目标与分支范围：@README.md
 - 旧 Python 产品行为（待废弃，仅作迁移参考）：@docs/template.md
-- 图片 JSON 协议：@image_create_tool/resources/JSON_PROTOCOL.md
+- 当前 Tauri 图片 JSON 协议：@docs/tauri-json.md
+- 旧 Python 图片 JSON 协议（迁移参考）：@image_create_tool/resources/JSON_PROTOCOL.md
 - 开发说明：@docs/dev.md
 - Tauri JSON 实现：@docs/tauri-dev.md
 - 旧 Python 代码规范（待废弃，不适用于 Rust / TypeScript）：@docs/CODING_STANDARDS.md

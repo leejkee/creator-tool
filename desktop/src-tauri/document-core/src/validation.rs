@@ -85,6 +85,10 @@ pub enum Violation {
     LeafHasChildren,
     InvalidLayout,
     InvalidJson,
+    InvalidPosition,
+    PositionOutOfBounds,
+    DuplicatePosition,
+    UnsupportedField,
 }
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ValidationIssue {
@@ -202,11 +206,10 @@ use ValueKind::{Array, Object, String as Text, UnsignedInteger};
 const NODE_TYPES: &[&str] = &["text", "image", "rect", "group"];
 const FIT: &[&str] = &["contain", "cover", "stretch", "height", "width"];
 const ALIGN: &[&str] = &["left", "center", "right"];
-const LAYOUT: &[&str] = &["column", "row", "grid", "fixed"];
 const DOCUMENT: &[FieldRule] = &[
     FieldRule::required("image-create-tool-version", Text)
         .nonempty()
-        .one_of(&["v0.1.0"])
+        .one_of(&[crate::DOCUMENT_VERSION])
         .code("UNSUPPORTED_FORMAT"),
     FieldRule::required("documentId", Text)
         .nonempty()
@@ -223,7 +226,7 @@ const NODE: &[FieldRule] = &[
         .nonempty()
         .one_of(NODE_TYPES)
         .code("INVALID_NODE_TYPE"),
-    FieldRule::optional("elements", Array).code("INVALID_NODE"),
+    FieldRule::optional("children", Array).code("INVALID_NODE"),
     FieldRule::optional("fit", Text)
         .one_of(FIT)
         .code("INVALID_FIT"),
@@ -232,86 +235,173 @@ const STYLE: &[FieldRule] = &[FieldRule::optional("align", Text)
     .one_of(ALIGN)
     .code("INVALID_STYLE")];
 
-fn check_layout(value: &Value, path: &str, issues: &mut Vec<ValidationIssue>) {
-    match value {
-        Value::Object(layout) => {
-            issues.extend(validate_fields(
-                layout,
-                path,
-                &[FieldRule::optional("type", Text)
-                    .one_of(LAYOUT)
-                    .code("INVALID_LAYOUT")],
-            ));
-        }
-        Value::Array(dimensions)
-            if dimensions.len() == 2
-                && dimensions.iter().all(|v| v.as_u64().is_some_and(|n| n > 0)) => {}
-        _ => issues.push(issue(
-            "INVALID_LAYOUT",
-            Violation::InvalidLayout,
-            path,
-            "Expected a layout object or positive integer [rows, columns]",
-        )),
+// Pairs use u32 to match the typed transport, without imposing arbitrary grid capacity.
+fn pair(value: &Value, positive: bool) -> Option<(u32, u32)> {
+    let values = value.as_array()?;
+    if values.len() != 2 {
+        return None;
     }
+    let first = u32::try_from(values[0].as_u64()?).ok()?;
+    let second = u32::try_from(values[1].as_u64()?).ok()?;
+    if positive && (first == 0 || second == 0) {
+        return None;
+    }
+    Some((first, second))
 }
-fn visit(
-    nodes: &[Value],
+
+fn visit_node(
+    value: &Value,
     path: &str,
     ids: &mut HashSet<std::string::String>,
     issues: &mut Vec<ValidationIssue>,
 ) {
-    for (index, value) in nodes.iter().enumerate() {
-        let path = child(path, &index.to_string());
-        let Some(node) = value.as_object() else {
+    let Some(node) = value.as_object() else {
+        issues.push(issue(
+            "INVALID_NODE",
+            Violation::InvalidType,
+            path,
+            "Expected a module object",
+        ));
+        return;
+    };
+    issues.extend(validate_fields(node, path, NODE));
+    for key in ["elements", "position", "span"] {
+        if node.contains_key(key) {
+            issues.push(issue(
+                "UNSUPPORTED_STRUCTURE",
+                Violation::UnsupportedField,
+                &child(path, key),
+                "Use children placement records; each module occupies one cell",
+            ));
+        }
+    }
+    if let Some(id) = node
+        .get("id")
+        .and_then(Value::as_str)
+        .filter(|id| !id.trim().is_empty())
+        && !ids.insert(id.into())
+    {
+        issues.push(issue(
+            "INVALID_NODE_ID",
+            Violation::DuplicateId,
+            &child(path, "id"),
+            "Module IDs must be unique throughout the document",
+        ));
+    }
+    let kind = node.get("type").and_then(Value::as_str);
+    if kind == Some("text") {
+        issues.extend(validate_fields(
+            node,
+            path,
+            &[FieldRule::required("text", Text).code("INVALID_NODE")],
+        ));
+    }
+    if let Some(style) = node.get("style").and_then(Value::as_object) {
+        issues.extend(validate_fields(style, &child(path, "style"), STYLE));
+    }
+    let layout = if kind == Some("group") {
+        issues.extend(validate_fields(
+            node,
+            path,
+            &[FieldRule::required("layout", Array).code("INVALID_LAYOUT")],
+        ));
+        match node.get("layout") {
+            Some(value) if value.is_array() => {
+                let dimensions = pair(value, true);
+                if dimensions.is_none() {
+                    issues.push(issue(
+                        "INVALID_LAYOUT",
+                        Violation::InvalidLayout,
+                        &child(path, "layout"),
+                        "Expected positive u32 [rows, columns]",
+                    ));
+                }
+                dimensions
+            }
+            _ => None,
+        }
+    } else {
+        if node.contains_key("layout") {
+            issues.push(issue(
+                "INVALID_LAYOUT",
+                Violation::UnsupportedField,
+                &child(path, "layout"),
+                "Only group modules own a layout",
+            ));
+        }
+        None
+    };
+    if let Some(children) = node.get("children").and_then(Value::as_array) {
+        if matches!(kind, Some("text" | "image" | "rect")) && !children.is_empty() {
             issues.push(issue(
                 "INVALID_NODE",
-                Violation::InvalidType,
-                &path,
-                "Expected a node object",
-            ));
-            continue;
-        };
-        issues.extend(validate_fields(node, &path, NODE));
-        if let Some(id) = node
-            .get("id")
-            .and_then(Value::as_str)
-            .filter(|id| !id.trim().is_empty())
-            && !ids.insert(id.into())
-        {
-            issues.push(issue(
-                "INVALID_NODE_ID",
-                Violation::DuplicateId,
-                &child(&path, "id"),
-                "Node IDs must be unique throughout the document",
+                Violation::LeafHasChildren,
+                &child(path, "children"),
+                "Leaf modules cannot contain children",
             ));
         }
-        if node.get("type").and_then(Value::as_str) == Some("text") {
-            issues.extend(validate_fields(
-                node,
-                &path,
-                &[FieldRule::required("text", Text).code("INVALID_NODE")],
-            ));
-        }
-        if let Some(layout) = node.get("layout") {
-            check_layout(layout, &child(&path, "layout"), issues);
-        }
-        if let Some(style) = node.get("style").and_then(Value::as_object) {
-            issues.extend(validate_fields(style, &child(&path, "style"), STYLE));
-        }
-        if let Some(children) = node.get("elements").and_then(Value::as_array) {
-            if matches!(
-                node.get("type").and_then(Value::as_str),
-                Some("text" | "image" | "rect")
-            ) && !children.is_empty()
-            {
+        let mut occupied = HashSet::new();
+        for (index, placed) in children.iter().enumerate() {
+            let placed_path = child(&child(path, "children"), &index.to_string());
+            let Some(placed) = placed.as_object() else {
                 issues.push(issue(
-                    "INVALID_NODE",
-                    Violation::LeafHasChildren,
-                    &child(&path, "elements"),
-                    "Leaf nodes cannot contain children",
+                    "INVALID_PLACEMENT",
+                    Violation::InvalidType,
+                    &placed_path,
+                    "Expected {position, module}",
+                ));
+                continue;
+            };
+            issues.extend(validate_fields(
+                placed,
+                &placed_path,
+                &[
+                    FieldRule::required("position", Array).code("INVALID_POSITION"),
+                    FieldRule::required("module", Object).code("INVALID_PLACEMENT"),
+                ],
+            ));
+            if placed.contains_key("span") {
+                issues.push(issue(
+                    "UNSUPPORTED_STRUCTURE",
+                    Violation::UnsupportedField,
+                    &child(&placed_path, "span"),
+                    "Spanning multiple cells is not supported",
                 ));
             }
-            visit(children, &child(&path, "elements"), ids, issues);
+            if let Some(value) = placed.get("position").filter(|v| v.is_array()) {
+                let position_path = child(&placed_path, "position");
+                match pair(value, false) {
+                    None => issues.push(issue(
+                        "INVALID_POSITION",
+                        Violation::InvalidPosition,
+                        &position_path,
+                        "Expected nonnegative u32 [row, column]",
+                    )),
+                    Some(position) => {
+                        if layout.is_some_and(|(rows, columns)| {
+                            position.0 >= rows || position.1 >= columns
+                        }) {
+                            issues.push(issue(
+                                "POSITION_OUT_OF_BOUNDS",
+                                Violation::PositionOutOfBounds,
+                                &position_path,
+                                "Position lies outside the parent grid",
+                            ));
+                        }
+                        if !occupied.insert(position) {
+                            issues.push(issue(
+                                "POSITION_OCCUPIED",
+                                Violation::DuplicatePosition,
+                                &position_path,
+                                "Only one module may occupy a cell",
+                            ));
+                        }
+                    }
+                }
+            }
+            if let Some(module) = placed.get("module").filter(|v| v.is_object()) {
+                visit_node(module, &child(&placed_path, "module"), ids, issues);
+            }
         }
     }
 }
@@ -328,7 +418,10 @@ pub fn validate_document(value: &Value) -> ValidationReport {
     };
     let mut issues = validate_fields(document, "", DOCUMENT);
     if let Some(nodes) = document.get("modules").and_then(Value::as_array) {
-        visit(nodes, "/modules", &mut HashSet::new(), &mut issues);
+        let mut ids = HashSet::new();
+        for (index, node) in nodes.iter().enumerate() {
+            visit_node(node, &format!("/modules/{index}"), &mut ids, &mut issues);
+        }
     }
     ValidationReport::from_issues(issues)
 }

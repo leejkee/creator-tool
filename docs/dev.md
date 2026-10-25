@@ -12,6 +12,8 @@
 
 这是迁移目标，不表示相关功能已实现。Rust JSON 实现设计与接口见 [Tauri 开发文档](tauri-dev.md)；不直接沿用 Python 线程模型、Qt 桥接、Pillow 绘制或 Windows 文件句柄机制作为新架构要求。
 
+当前图片描述采用 [Tauri JSON 协议 v0.2.0](tauri-json.md)，示例位于 `desktop/examples/grid.image.json`。
+
 ## 迁移参考
 
 - [旧图片 JSON 协议](../image_create_tool/resources/JSON_PROTOCOL.md)与[示例](../image_create_tool/resources/example.image.json)：用于核对既有数据，不代表 Rust 部分已经实现兼容。

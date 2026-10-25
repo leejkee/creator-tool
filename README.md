@@ -10,7 +10,7 @@
 
 **本分支 `refactor/tauri-init` 仅完成图片描述 JSON 的 Rust 处理部分。** GUI 与图片合成器的 TypeScript 迁移留待后续任务逐步完成。本节描述迁移目标与任务范围，不表示这些功能已经实现；下文仍为现有 Python 应用的使用说明。
 
-迁移开发入口见 [开发说明](docs/dev.md)，Rust JSON 状态与同步接口见 [Tauri 开发文档](docs/tauri-dev.md)。旧 Python 设计文档已标记为待废弃，仅供迁移核对。
+迁移开发入口见 [开发说明](docs/dev.md)，Rust JSON 状态与同步接口见 [Tauri 开发文档](docs/tauri-dev.md)，当前网格结构见 [JSON 协议 v0.2.0](docs/tauri-json.md)及[示例](desktop/examples/grid.image.json)。旧 Python 设计文档已标记为待废弃，仅供迁移核对。
 
 ## 旧 Python 应用（待废弃，仅供迁移参考）
 

@@ -1,0 +1,53 @@
+# Tauri 图片 JSON 协议 v0.2.0
+
+本协议描述当前 Rust 实现。与 Python v0.1.0 的 elements/对象布局不兼容；Rust 不自动转换、猜测位置或覆盖旧文件。开发接口见 [Tauri 开发文档](tauri-dev.md)，完整示例见 [grid.image.json](../desktop/examples/grid.image.json)。
+
+## 文档与模块
+
+一份文档包含 `image-create-tool-version: "v0.2.0"`、非空 documentId、非负整数 revision、composition 对象和 modules 数组。文档的工作目录、dirty 和会话版本是 Rust 会话状态，不写入 JSON。
+
+modules 仍是顶层模块列表；本次不改变其画布组合规则，也不为顶层模块推导网格位置。需要整体网格时，在 modules 中放置一个 group，由它管理子模块布局。
+
+模块共同字段为非空 id、type，type 为 text/image/rect/group。整个文档中的模块 ID 唯一；text 模块要求 text 字符串，允许空文本。样式、素材引用和其他扩展字段仍随模块保存。未知字段保留，但旧 elements、模块内的 position 及多格 span 属于明确禁用的结构字段。
+
+## 网格与放置记录
+
+```json
+{
+  "id": "group-1",
+  "type": "group",
+  "layout": [2, 2],
+  "gap": 16,
+  "children": [
+    {"position": [0, 0], "module": {"id": "image-1", "type": "image", "assetPath": "hero.png"}},
+    {"position": [0, 1], "module": {"id": "text-1", "type": "text", "text": "英雄说明"}}
+  ]
+}
+```
+
+- group 必须有 layout，格式为 `[行数, 列数]`，两者均为大于零的 u32 整数。
+- group 的 children 为放置记录数组，可为空或省略；序列化时空 children 可被省略。
+- 每条记录必须有 position 和 module。position 为 `[行, 列]`，从零开始，两者均为非负 u32 整数；module 为实际模块对象，可再次是 group。
+- 位置只属于当前父容器，模块内容对象不保存自己的 position。移动时更新放置记录，模块 ID、文字和素材保持不变。
+- 每条记录仅占一个单元格。同一 group 中不允许重复占位，也不允许越界。允许空位，不创建占位模块。
+- 不同 group 的坐标系独立，可以各自使用 `[0, 0]`；嵌套 group 的单元格数量与父级无关。
+- children 的数组顺序不决定网格位置；位置由 position 唯一表达。调整数组顺序不会重新分配坐标。
+- text/image/rect 不允许 layout 或非空 children。不支持对象形式的 column/row/grid/fixed 布局、跨行跨列 span，以及旧 elements。
+- 放置记录允许其他扩展元数据，读写时保留；其内容不会被误当作模块结构递归处理。
+
+Rust 使用 `Node { layout: Option<(u32, u32)>, children: Vec<PlacedModule>, ... }` 和 `PlacedModule { position: (u32, u32), module: Node, ... }` 表达；叶子模块不设置 layout。暂不引入独立 Tree 类、父指针、坐标映射文件或稠密二维数组。
+
+## 编辑与校验
+
+- set_group_layout 修改指定 group 的行列数；零行列或导致已有模块越界时拒绝，绝不自动删除或移动内容。
+- set_module_position 修改指定 group 的直接子模块坐标；目标已占用、越界、父级不是 group 或子模块不属于该父级时拒绝。
+- 两个接口均携带 expectedVersion，在文档副本上操作，校验成功后统一提交。实际发生修改时增加文档 revision 和会话 version，并置 dirty；无变化时不增加版本。
+- 跨父级移动、一次交换多个位置等结构批量编辑，目前通过 replace_document 一次提交完整合法文档；尚未增加专用命令。
+- patch_document_node 仅修改普通属性；拒绝 id/type/children/layout/position/module/span/elements。不通过修改内容字段间接改变布局结构。
+- 同一套校验应用于文件打开、模板创建、文档替换、节点编辑、编码保存、另存为及外部文件检测。错误路径指向具体位置，例如 `/modules/0/children/1/position` 或 `/modules/0/children/1/module/text`。
+
+layout/position 只表达逻辑布局。Rust 不计算文字换行、行列像素尺寸或最终坐标，TS 根据画布、内容和视觉参数完成测量与合成，预览与导出使用相同逻辑。gap 等视觉参数保留但当前尚未做完整数值校验。
+
+## 格式变更
+
+旧 Python 实现、验收资源和旧 JSON 保持原样。Rust 新建文档使用 v0.2.0，从模板创建只接受相同版本；旧文件需要后续明确的数据迁移流程，当前不支持隐式转换。

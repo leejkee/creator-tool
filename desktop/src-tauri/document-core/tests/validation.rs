@@ -128,16 +128,16 @@ fn document_validation_collects_all_required_fields_without_changing_the_input()
 #[test]
 fn empty_text_empty_modules_and_empty_groups_are_valid_but_missing_text_is_not() {
     let mut input = document_value();
-    input["modules"][0]["elements"][1]["text"] = json!("");
+    input["modules"][0]["children"][1]["module"]["text"] = json!("");
     assert!(validate_document(&input).valid);
-    input["modules"][0]["elements"][1]
+    input["modules"][0]["children"][1]["module"]
         .as_object_mut()
         .unwrap()
         .remove("text");
     let report = validate_document(&input);
-    assert_eq!(report.issues[0].path, "/modules/0/elements/1/text");
+    assert_eq!(report.issues[0].path, "/modules/0/children/1/module/text");
     assert_eq!(report.issues[0].rule, Violation::MissingField);
-    input["modules"][0]["elements"] = json!([]);
+    input["modules"][0]["children"] = json!([]);
     assert!(validate_document(&input).valid);
     input["modules"] = json!([]);
     assert!(validate_document(&input).valid);
@@ -164,16 +164,16 @@ fn reports_keep_null_missing_and_empty_array_distinct() {
 fn nested_errors_include_exact_paths_and_all_node_errors_are_reported() {
     let mut input = document_value();
     input["documentId"] = json!(" ");
-    input["modules"][0]["elements"][0]["id"] = json!(" ");
-    input["modules"][0]["elements"][1]["fit"] = json!("zoom");
-    input["modules"][0]["elements"][1]["style"]["align"] = json!("middle");
+    input["modules"][0]["children"][0]["module"]["id"] = json!(" ");
+    input["modules"][0]["children"][1]["module"]["fit"] = json!("zoom");
+    input["modules"][0]["children"][1]["module"]["style"]["align"] = json!("middle");
     let report = validate_document(&input);
     assert_eq!(report.issues.len(), 4);
     for path in [
         "/documentId",
-        "/modules/0/elements/0/id",
-        "/modules/0/elements/1/fit",
-        "/modules/0/elements/1/style/align",
+        "/modules/0/children/0/module/id",
+        "/modules/0/children/1/module/fit",
+        "/modules/0/children/1/module/style/align",
     ] {
         assert!(
             report.issues.iter().any(|i| i.path == path),
@@ -185,41 +185,33 @@ fn nested_errors_include_exact_paths_and_all_node_errors_are_reported() {
 #[test]
 fn tree_uniqueness_and_leaf_constraints_remain_enforced() {
     let mut input = document_value();
-    input["modules"][0]["elements"][1]["id"] = json!("heading");
+    input["modules"][0]["children"][1]["module"]["id"] = json!("heading");
     input["modules"][0]["type"] = json!("text");
     input["modules"][0]["text"] = json!("");
     let report = validate_document(&input);
     assert!(
-        report
-            .issues
-            .iter()
-            .any(|i| i.rule == Violation::DuplicateId && i.path == "/modules/0/elements/1/id")
+        report.issues.iter().any(
+            |i| i.rule == Violation::DuplicateId && i.path == "/modules/0/children/1/module/id"
+        )
     );
     assert!(
         report
             .issues
             .iter()
-            .any(|i| i.rule == Violation::LeafHasChildren && i.path == "/modules/0/elements")
+            .any(|i| i.rule == Violation::LeafHasChildren && i.path == "/modules/0/children")
     );
 }
 
 #[test]
 fn optional_enumerations_validate_current_layout_fit_and_alignment_variants() {
     let mut input = document_value();
-    for layout in [
-        json!({}),
-        json!({"type":"column"}),
-        json!({"type":"row"}),
-        json!({"type":"grid"}),
-        json!({"type":"fixed"}),
-        json!([2, 1]),
-    ] {
+    for layout in [json!([2, 1]), json!([3, 2]), json!([4, 4])] {
         input["modules"][0]["layout"] = layout;
         assert!(validate_document(&input).valid);
     }
     for layout in [
         json!(null),
-        json!({"type":"flex"}),
+        json!({"type":"grid"}),
         json!([1]),
         json!([0, 2]),
         json!([true, 2]),
@@ -233,16 +225,13 @@ fn optional_enumerations_validate_current_layout_fit_and_alignment_variants() {
                 .any(|i| i.code == "INVALID_LAYOUT")
         );
     }
-    input["modules"][0]
-        .as_object_mut()
-        .unwrap()
-        .remove("layout");
+    input["modules"][0]["layout"] = json!([2, 1]);
     for fit in ["contain", "cover", "stretch", "height", "width"] {
-        input["modules"][0]["elements"][1]["fit"] = json!(fit);
+        input["modules"][0]["children"][1]["module"]["fit"] = json!(fit);
         assert!(validate_document(&input).valid);
     }
     for align in ["left", "center", "right"] {
-        input["modules"][0]["elements"][1]["style"]["align"] = json!(align);
+        input["modules"][0]["children"][1]["module"]["style"]["align"] = json!(align);
         assert!(validate_document(&input).valid);
     }
 }
@@ -251,9 +240,10 @@ fn optional_enumerations_validate_current_layout_fit_and_alignment_variants() {
 fn unknown_fields_and_processor_parameters_are_not_recursively_interpreted_as_schema_fields() {
     let mut input = document_value();
     input["futureDocumentField"] = json!({"id":null,"type":"future","fit":"custom"});
-    input["modules"][0]["elements"][1]["processor"] =
+    input["modules"][0]["children"][1]["module"]["processor"] =
         json!({"params":{"align":"not-a-style","type":null}});
-    input["modules"][0]["elements"][1]["style"]["futureEffect"] = json!({"align":"custom"});
+    input["modules"][0]["children"][1]["module"]["style"]["futureEffect"] =
+        json!({"align":"custom"});
     assert!(validate_document(&input).valid);
     let parsed = ImageDocument::parse(&serde_json::to_vec(&input).unwrap()).unwrap();
     assert_eq!(
@@ -296,7 +286,7 @@ fn rejected_edits_return_all_issues_and_preserve_document_disk_and_version() {
         )
         .unwrap_err();
     assert_eq!(error.issues.len(), 2);
-    assert_eq!(error.issues[0].path, "/modules/0/elements/1/fit");
+    assert_eq!(error.issues[0].path, "/modules/0/children/1/module/fit");
     assert_same_snapshot(&store.get(&state.session_id).unwrap(), &state);
     assert_eq!(fs::read(path).unwrap(), bytes);
     assert_eq!(
@@ -323,7 +313,7 @@ fn semantic_errors_in_external_files_preserve_the_open_document() {
     let mut store = DocumentStore::default();
     let state = store.open(&path).unwrap();
     let mut external = document_value();
-    external["modules"][0]["elements"][1]["fit"] = json!("invalid");
+    external["modules"][0]["children"][1]["module"]["fit"] = json!("invalid");
     let bytes = serde_json::to_vec(&external).unwrap();
     fs::write(&path, &bytes).unwrap();
     let changed = store.check(&state.session_id).unwrap();
@@ -333,7 +323,7 @@ fn semantic_errors_in_external_files_preserve_the_open_document() {
             document: None,
             error: Some(error),
         } => {
-            assert_eq!(error.issues[0].path, "/modules/0/elements/1/fit");
+            assert_eq!(error.issues[0].path, "/modules/0/children/1/module/fit");
         }
         other => panic!("Expected invalid candidate, got {other:?}"),
     }

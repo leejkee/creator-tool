@@ -11,7 +11,7 @@ Rust 是已打开图片文档的唯一权威状态管理者，负责文件 I/O�
 ## 数据与会话
 
 - 采用强类型文档和递归节点；暂未迁移的布局、样式等属性使用保留字段存储，避免读写时丢失数据。它们的完整语义校验留到对应能力迁移时完成。
-- 仅接收 `v0.1.0`；要求非空文档 ID、非负整数版本、画布对象、模块数组、全局唯一的非空节点 ID。节点类型为 text/image/rect/group，叶节点不可含非空子节点。
+- 仅接收 `v0.2.0`；要求非空文档 ID、非负整数版本、画布对象、模块数组、全局唯一的非空节点 ID。节点类型为 text/image/rect/group，叶节点不可含非空子节点。
 - 每个会话有独立 sessionId；同一规范化文件路径在本进程复用会话。会话拥有 document、path、workingDirectory、version、dirty、externalChange。
 - version 是会话内单调递增的并发控制版本，与磁盘文档 revision 分开。前端所有修改、保存、重载和关闭都提交 expectedVersion，过期请求拒绝。
 - 普通编辑增加文档 revision；保存不增加 revision。外部重载保留磁盘 revision，但增加会话 version。
@@ -48,13 +48,15 @@ Rust 是已打开图片文档的唯一权威状态管理者，负责文件 I/O�
 | `get_document` | sessionId | 当前内存快照 |
 | `list_documents` | 无 | 全部会话快照 |
 | `replace_document` | sessionId、expectedVersion、document | 整份文档提交后的快照，适用于结构调整 |
+| `set_group_layout` | sessionId、expectedVersion、groupId、layout（二元组） | 修改网格后的快照 |
+| `set_module_position` | sessionId、expectedVersion、groupId、moduleId、position（二元组） | 修改放置位置后的快照 |
 | `patch_document_node` | sessionId、expectedVersion、nodeId、patch | 修改指定节点后的快照 |
 | `save_document` | sessionId、expectedVersion | 保存后快照 |
 | `check_document_file` | sessionId | 检查磁盘后的快照 |
 | `reload_document` | sessionId、expectedVersion、discardChanges | 从当前磁盘内容重新加载后的快照 |
 | `close_document` | sessionId、expectedVersion、discardChanges | 无；成功发送 `document-closed`，载荷为 sessionId |
 
-`patch` 按属性整体替换，null 删除属性；嵌套 style 对象不会深度合并。禁止通过 patch 修改 id/type/elements，结构编辑提交完整 document。提交的 document 保留当前 documentId、协议版本和 revision，Rust 校验成功后增加 revision。整体提交可编辑画布、模块结构及其保留属性，但不会解析 Style 引用或查询素材。
+`patch` 按属性整体替换，null 删除属性；嵌套 style 对象不会深度合并。禁止通过 patch 修改 id/type/children/layout/position/module/span/elements，结构编辑提交完整 document。提交的 document 保留当前 documentId、协议版本和 revision，Rust 校验成功后增加 revision。整体提交可编辑画布、模块结构及其保留属性，但不会解析 Style 引用或查询素材。
 
 外部状态 `externalChange=null` 表示磁盘仍为基线；否则为 `{kind:"modified", document, error}`、`{kind:"missing"}` 或 `{kind:"unreadable", error}`。有效候选提供 document，无效 JSON 或身份改变提供 error。界面应独立展示 dirty 和 externalChange。
 
@@ -102,8 +104,9 @@ export PKG_CONFIG_PATH=/workspace/tauri-sysroot/root/usr/lib/x86_64-linux-gnu/pk
 
 ## creator-document-core 自动化测试
 
-用户授权后现有 53 个集成测试（JSON 7 个、会话及文件同步 18 个、新建及另存为 12 个、校验规则 16 个），当前全部通过，无失败或跳过。测试位于 `desktop/src-tauri/document-core/tests/`，仅依赖 Rust 核心和开发依赖 tempfile，无需 Tauri、WebView 或 Python。
+用户授权后现有 68 个集成测试（JSON 7 个、会话及文件同步 18 个、新建及另存为 12 个、校验规则 16 个、网格放置 15 个），当前全部通过，无失败或跳过。测试位于 `desktop/src-tauri/document-core/tests/`，仅依赖 Rust 核心和开发依赖 tempfile，无需 Tauri、WebView 或 Python。
 
+- `grid_placement.rs`：二元组、空位、嵌套、放置记录往返、越界/占位、布局调整、位置更新、示例及旧格式拒绝。
 - `json_document.rs`：中文与未知字段往返、UTF-8 BOM、非法 JSON/字段类型、协议版本、文档身份、节点 ID、节点类型及叶子节点约束。
 - `document_sessions.rs`：会话复用与隔离、显式保存、无操作提交、补丁语义、拒绝操作的状态完整性、并发版本、revision 溢出、外部候选、格式变化、丢失与不可读文件、基线恢复、重载及关闭保护。
 - `document_lifecycle.rs`：新建目录及 JSON、并列创建、模板资源重定位、同名拒绝覆盖、另存为会话切换及冲突保护。
@@ -126,7 +129,7 @@ cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --all-ta
 2. 已有打开模块时，前端传 sourceSessionId，复用该会话的 workingDirectory；显式选择 baseDirectory 时优先使用所选目录。后台不会自行选择列表中的某个会话。
 3. 创建 `<基础目录>/<模块名>/<模块名>.json`，目录已存在即拒绝，不复用或覆盖。成功后建立 clean 会话。空白文档从 Rust 默认值创建，不依赖模板。
 4. 例如已打开 `/work/模块A/模块A.json`，新模块 B 创建到 `/work/模块B/模块B.json`，与 A 并列。重新打开符合“同名目录/同名 JSON”约定的文件时，其基础目录为模块目录的父目录；旧式独立 JSON 的工作目录为该文件所在目录。
-5. 可传 templatePath 从已保存的 v0.1.0 图片 JSON 创建；保留内容、sourceNotes、节点 ID 及扩展字段，赋予新 documentId、revision=0、title=模块名。模板原文件不变。这里不是全局 Style/Template 资源解析。
+5. 可传 templatePath 从已保存的 v0.2.0 图片 JSON 创建；保留内容、sourceNotes、节点 ID 及扩展字段，赋予新 documentId、revision=0、title=模块名。模板原文件不变。这里不是全局 Style/Template 资源解析。
 
 另存为必须由前端要求用户选择 targetDirectory 并填写 fileName；后端要求目录已存在，不自动创建同名子目录，未提供 .json 后缀时补齐。目标文件已存在时拒绝，包括当前源文件；原路径保存应使用 save_document。成功后保留 sessionId、增加会话 version、生成新文档身份并从 revision=0 开始，将会话切换至新文件，清除 dirty 和外部候选。失败保留原会话和文件。未修改的源文件仍保留；如源文件有外部冲突，可将当前内存版本另存至新文件。
 
@@ -146,22 +149,32 @@ cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --all-ta
 
 | 字段 | 存在性与空值规则 | 枚举/结构规则 |
 | --- | --- | --- |
-| image-create-tool-version | 必须有，非空字符串，不接受 null | v0.1.0 |
+| image-create-tool-version | 必须有，非空字符串，不接受 null | v0.2.0 |
 | documentId、节点 id | 必须有，非空字符串，不接受 null | 节点 ID 在整棵树中唯一 |
 | revision | 必须有，不接受 null | u64 非负整数 |
 | composition | 必须有，不接受 null，允许空对象 | 仅校验对象类型，内部画布参数暂不收紧 |
 | modules | 必须有，不接受 null，允许空数组 | 递归校验节点 |
 | 节点 type | 必须有，非空字符串，不接受 null | text / image / rect / group |
 | text 节点的 text | 必须有，允许空字符串，不接受 null | 字符串 |
-| elements | 可省略，允许空数组，不接受 null | 数组；叶子节点不可含非空子节点 |
+| children | group 可省略，允许空数组，不接受 null | position/module 放置记录；叶子节点不可含非空子模块 |
 | fit | 可省略，出现时不可为 null 或空字符串 | contain / cover / stretch / height / width |
-| layout | 可省略，出现时不可为 null | 对象或正整数二元数组；对象 type 可省略，出现时为 column / row / grid / fixed |
+| layout | group 必填，叶子模块不可有 | 正整数二元组 [行数, 列数] |
+| children 内的 position | 必填，不接受 null | 非负整数二元组 [行, 列]，不越界、不重复占位 |
+| children 内的 module | 必填，不接受 null | 嵌套的模块对象 |
 | style.align | style 为对象时检查；可省略，出现时不可为 null 或空字符串 | left / center / right |
 
 “必须有但可为空”已由 modules、text 等字段体现。规则框架也支持“必须有且允许 null”，但目前没有擅自将已有字段改成可为 null。字段类型与非空约束通过后才判断枚举，避免同一字段产生重复的连带错误。
 
-报告包含 valid 和 issues；每个问题含 code、rule、path、message。path 使用 RFC 6901 JSON Pointer，例如 `/modules/0/elements/1/style/align`；根路径为空字符串。rule 区分 missingField、nullNotAllowed、invalidType、emptyValue、invalidEnum，以及重复 ID、叶节点含子节点、布局形状和 JSON 语法错误。
+报告包含 valid 和 issues；每个问题含 code、rule、path、message。path 使用 RFC 6901 JSON Pointer，例如 `/modules/0/children/1/module/style/align`；根路径为空字符串。rule 区分 missingField、nullNotAllowed、invalidType、emptyValue、invalidEnum，以及重复 ID、叶节点含子节点、布局形状和 JSON 语法错误。
 
 validate_image_json 可在不打开文件时检查原始文本并一次返回所有问题，支持 UTF-8 BOM；文本语法/重复结构字段无法解析时返回 INVALID_JSON。读文件仍先进行强类型反序列化，字段缺失/类型错误保留已有 INVALID_JSON 顶层错误码，并在能够解析成 JSON 时附带字段诊断。模型编辑、编码、创建/另存为、外部文件候选及重载也使用同一规则层；失败不提交文档修改或覆盖文件。
 
-新增 16 个校验测试，总计 53 个通过。仍未完整校验数值范围、布局容量及位置关系、样式对象的全部属性、资源可用性或渲染效果；这些留待协议进一步确定。
+初次校验实现新增 16 个测试；当前测试总数见自动化测试章节。仍未完整校验数值范围、样式对象的全部属性、资源可用性或渲染效果；这些留待协议进一步确定。
+
+## 网格放置模型
+
+当前协议已更新为 v0.2.0，完整结构与约束以 [Tauri 图片 JSON 协议](tauri-json.md) 为准。组合模块使用 layout 二元组和 children 放置记录，子模块坐标由父容器记录。旧 v0.1.0/elements 不自动迁移。
+
+新增 set_group_layout 和 set_module_position，分别修改容器尺寸及直接子模块的放置坐标；越界、重复占位或非法父子关系均拒绝整次修改，保持会话、版本和磁盘内容不变。跨组移动和多位置交换暂使用 replace_document。实际像素布局由后续 TS 合成器处理。
+
+网格模型新增 15 个测试，核心合计 68 个测试通过；原有文件、会话、模板、校验测试已同步使用新结构。
