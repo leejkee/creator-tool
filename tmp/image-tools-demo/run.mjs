@@ -10,7 +10,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const repository = resolve(root, "../..");
 const { createServer } = await import(pathToFileURL(join(repository, "desktop/node_modules/vite/dist/node/index.js")).href);
 const profile = await mkdtemp(join(tmpdir(), "creator-image-demo-"));
-const server = await createServer({ configFile: join(root, "vite.config.mjs") });
+const server = await createServer({ configFile: join(root, "vite.config.mjs"), cacheDir: join(profile, "vite-cache") });
 let browser;
 let socket;
 let browserError;
