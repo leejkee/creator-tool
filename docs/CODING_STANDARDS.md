@@ -1,12 +1,11 @@
-# Python 代码规范
+# 旧 Python 代码规范（待废弃）
+
+> **待废弃：仅供迁移核对旧 Python 实现。** 本文不作为当前 Tauri 分支的架构、实施计划或验收依据，也不约束 Rust / TypeScript 实现。后续开发以 [开发说明](dev.md) 和 [README 的迁移范围](../README.md#tauri-迁移任务与本分支范围) 为入口。
 
 适用范围：`image_create_tool/`、`tests/` 及项目维护脚本。运行环境以
 `pyproject.toml` 的 Python 3.11+ 为基线，使用工作区 `.venv/Scripts/python.exe`。
 
-本文规定新增和实质修改代码的写法。历史代码随相关功能逐步整理，避免仅为统一风格进行大范围改动。
-当前图片协议为 v0.1.0，见 [JSON_PROTOCOL.md](../image_create_tool/resources/JSON_PROTOCOL.md)；
-本次产品行为以 [重构文档](template.md) 为准，工具链接入仍按本文渐进推进。
-项目行为与线程协议仍以 [开发文档](dev.md) 及其模块文档为准。
+下文的实现约束与工具建议仅适用于旧 Python 工程，不作为新架构的编码规范。图片 JSON 的旧协议可用于迁移核对，见 [JSON_PROTOCOL.md](../image_create_tool/resources/JSON_PROTOCOL.md)。
 
 ## 1. 基本原则
 

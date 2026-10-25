@@ -1,5 +1,19 @@
 # 图片 JSON 编辑器 v0.1.0
 
+## Tauri 迁移任务与本分支范围
+
+接下来逐步将 `image_create_tool/` 中的 Python 工程迁移到 `desktop/` 中的 Tauri 应用，职责划分如下：
+
+- **GUI**：将原 PySide6 界面迁移为 Tauri 前端的 TypeScript 界面。
+- **图片合成器**：将原 Python/Pillow 图片合成器迁移为 TypeScript 实现，使用 Web 绘图工具，并让预览与最终导出共用同一套合成逻辑，保证生成结果与预览一致。
+- **图片 JSON 处理**：将原 Python 中对图片描述 JSON 的处理逻辑迁移为 Tauri 后端的 Rust 实现。
+
+**本分支 `refactor/tauri-init` 仅完成图片描述 JSON 的 Rust 处理部分。** GUI 与图片合成器的 TypeScript 迁移留待后续任务逐步完成。本节描述迁移目标与任务范围，不表示这些功能已经实现；下文仍为现有 Python 应用的使用说明。
+
+迁移开发入口见 [开发说明](docs/dev.md)，Rust JSON 状态与同步接口见 [Tauri 开发文档](docs/tauri-dev.md)。旧 Python 设计文档已标记为待废弃，仅供迁移核对。
+
+## 旧 Python 应用（待废弃，仅供迁移参考）
+
 PySide6 GUI、文件服务和 Pillow 渲染器在同一进程中协作。每张图片保存为独立 JSON，GUI 直接打开文件；默认 PNG 与 JSON 同名、同目录。Agent 可在一个目录中组织多张图片，应用不要求项目清单或固定的 `pjt.json`。
 
 ## 运行

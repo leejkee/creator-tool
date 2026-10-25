@@ -158,3 +158,43 @@ pub fn start_watcher(app: AppHandle) {
         }
     });
 }
+
+#[tauri::command]
+pub async fn create_document(
+    app: AppHandle,
+    state: State<'_, Documents>,
+    base_directory: Option<String>,
+    source_session_id: Option<String>,
+    module_name: String,
+    template_path: Option<String>,
+) -> Result<Snapshot> {
+    with_store(&state, |store| {
+        let snapshot = store.create(
+            base_directory.as_deref().map(Path::new),
+            source_session_id.as_deref(),
+            &module_name,
+            template_path.as_deref().map(Path::new),
+        )?;
+        publish(&app, &snapshot);
+        Ok(snapshot)
+    })
+}
+
+#[tauri::command]
+pub async fn save_document_as(
+    app: AppHandle,
+    state: State<'_, Documents>,
+    session_id: String,
+    expected_version: u64,
+    target_directory: String,
+    file_name: String,
+) -> Result<Snapshot> {
+    mutate(&app, &state, &session_id, |store| {
+        store.save_as(
+            &session_id,
+            expected_version,
+            Path::new(&target_directory),
+            &file_name,
+        )
+    })
+}

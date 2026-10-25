@@ -1,11 +1,19 @@
 ## Reference
 
-- 当前产品行为：@docs/template.md
+- 当前迁移目标与分支范围：@README.md
+- 旧 Python 产品行为（待废弃，仅作迁移参考）：@docs/template.md
 - 图片 JSON 协议：@image_create_tool/resources/JSON_PROTOCOL.md
 - 开发说明：@docs/dev.md
-- 代码规范：@docs/CODING_STANDARDS.md
+- Tauri JSON 实现：@docs/tauri-dev.md
+- 旧 Python 代码规范（待废弃，不适用于 Rust / TypeScript）：@docs/CODING_STANDARDS.md
 
-## 当前版本 v0.1.0
+## 当前开发方向
+
+- 后续开发围绕 `desktop/` 的 Tauri 架构进行，见 @docs/dev.md。
+- 本分支仅完成图片描述 JSON 的 Rust 处理；TypeScript GUI 和 Web 图片合成器在后续任务迁移，预览与导出共用合成逻辑。
+- 下方 Python 说明仅供迁移核对，不作为新架构实现要求。
+
+## 旧 Python 版本 v0.1.0（待废弃）
 
 - Python 包 `image_create_tool`；GUI、服务和 Pillow 渲染器在同一进程的不同线程运行。
 - 使用工作区 `.venv/Scripts/python.exe -m image_create_tool` 启动 GUI，在界面中打开或新建图片 JSON、检查预览问题并导出 PNG。

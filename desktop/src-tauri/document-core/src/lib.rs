@@ -1,4 +1,5 @@
 //! Authoritative image document sessions, independent of Tauri and rendering.
+mod lifecycle;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{
@@ -126,6 +127,7 @@ impl PartialEq for DocumentError {
 pub struct Snapshot {
     pub session_id: String,
     pub path: PathBuf,
+    pub working_directory: PathBuf,
     pub document: ImageDocument,
     pub version: u64,
     pub dirty: bool,
@@ -259,6 +261,7 @@ impl DocumentStore {
         let session_id = format!("document-{}", self.next_id);
         let state = Snapshot {
             session_id: session_id.clone(),
+            working_directory: lifecycle::working_directory(&path),
             path,
             document: document.clone(),
             version: 0,

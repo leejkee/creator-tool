@@ -18,6 +18,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             documents::open_document,
+            documents::create_document,
+            documents::save_document_as,
             documents::get_document,
             documents::list_documents,
             documents::replace_document,
