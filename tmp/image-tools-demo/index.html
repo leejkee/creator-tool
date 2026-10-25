@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>安琪拉图片处理示例</title>
+<style>
+body { margin: 24px; font: 16px system-ui; color: #ddd; background: #20212a; }
+#gallery { display: flex; flex-wrap: wrap; gap: 20px; align-items: start; }
+figure { margin: 0; width: 300px; } figure img, figure canvas { width: 100%; height: auto; background: repeating-conic-gradient(#bbb 0% 25%, #eee 0% 50%) 0 / 20px 20px; }
+figcaption { padding: 8px 0; } pre { white-space: pre-wrap; }
+</style></head>
+<body><h1>安琪拉：裁剪与缩放</h1><p>直接调用 desktop/src/image-tools，所有处理分别基于原图。</p><div id="gallery"></div><pre id="status">处理中…</pre><script type="module" src="/main.ts"></script></body>
+</html>

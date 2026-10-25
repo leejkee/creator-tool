@@ -11,7 +11,7 @@
 ## 当前开发方向
 
 - 后续开发围绕 `desktop/` 的 Tauri 架构进行，见 @docs/dev.md。
-- 本分支仅完成图片描述 JSON 的 Rust 处理；TypeScript GUI 和 Web 图片合成器在后续任务迁移，预览与导出共用合成逻辑。
+- 本分支实现图片描述 JSON 的 Rust 处理及 `desktop/src/types/` 中的 TS 只读数据契约及 `desktop/src/image-tools/` 基础图片处理工具；TypeScript GUI 和 Web 图片合成器在后续任务迁移，预览与导出共用合成逻辑。
 - 下方 Python 说明仅供迁移核对，不作为新架构实现要求。
 
 ## 旧 Python 版本 v0.1.0（待废弃）

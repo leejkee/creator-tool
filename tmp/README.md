@@ -19,3 +19,7 @@ CARGO_TARGET_DIR=/tmp/creator-miyue-demo-target cargo run --manifest-path tmp/Ca
 旧 group 标题展开为文本子模块，itemRow 展开为图片及文字放置记录，column/row 布局转为网格二元组。仅支持这份数据实际使用的旧布局，不静默猜测其他布局。
 
 本示例只验证图片描述对象和文件业务，未执行预览或 PNG 渲染。提交的 JSON 使用相对素材路径；运行时生成的临时 JSON 使用当前仓库的绝对素材路径。
+
+## TS 图片处理实图示例
+
+[image-tools-demo/](image-tools-demo/README.md) 保存安琪拉原图，以及通过真实 TS 工具生成的矩形裁剪、圆形裁剪、0.5 倍和 2 倍缩放 PNG；附有参数、哈希记录和可重复运行脚本。

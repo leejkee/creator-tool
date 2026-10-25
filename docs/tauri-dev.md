@@ -178,3 +178,24 @@ validate_image_json 可在不打开文件时检查原始文本并一次返回所
 新增 set_group_layout 和 set_module_position，分别修改容器尺寸及直接子模块的放置坐标；越界、重复占位或非法父子关系均拒绝整次修改，保持会话、版本和磁盘内容不变。跨组移动和多位置交换暂使用 replace_document。实际像素布局由后续 TS 合成器处理。
 
 网格模型新增 15 个测试，核心合计 68 个测试通过；原有文件、会话、模板、校验测试已同步使用新结构。
+
+## TypeScript 只读数据类型
+
+统一从 `desktop/src/types/index.ts` 导入，定义仅包含 type/interface，没有类实例、可变单例、校验器或业务执行代码。
+
+| 文件 | 定义 | Rust 对应 |
+| --- | --- | --- |
+| types/json.ts | JsonValue/JsonObject、ExtensionFields | serde_json::Value / flatten 扩展字段 |
+| types/document.ts | ImageDocument、ModuleNode 联合类型、PlacedModule、网格二元组 | ImageDocument / Node / PlacedModule |
+| types/session.ts | DocumentSnapshot、ExternalChange、事件载荷映射 | Snapshot / ExternalChange / Tauri 事件 |
+| types/validation.ts | DocumentError、ValidationIssue/Report、Violation 名称 | 错误与校验报告 |
+
+文字、图片、矩形和组合模块通过 type 标签区分；组合模块的 layout 必填，children 可省略；叶子模块允许空 children 且不声明 layout。position 始终在放置记录中。全部已声明成员及嵌套数组、JSON 对象为 readonly；实际类型收窄和数据校验仍由 Rust/后续资源解析承担，readonly 不会在运行时冻结对象。
+
+Rust 的 properties 通过 flatten 展开，TS 不添加额外 properties 包装。未知扩展字段为只读 unknown，需要收窄后使用；title/sourceNotes、素材和样式等尚未完整校验的属性，不直接宣称具有某种已保证的类型。composition 只保证为 JsonObject，具体渲染参数留待合成模块建立明确输入约束。此处不复制一套 Rust 校验规则。
+
+ExternalChange 的 kind 与 Rust 序列化标签一致；modified 的 document/error 显式允许 null，Snapshot.externalChange 也显式允许 null。DocumentError.issues 为空时会被 Rust 省略，因此 TS 声明为可选。document-closed 事件的载荷是 sessionId 字符串，不是快照。
+
+Rust u32 坐标与尺寸映射为 TS number，整数及范围由 Rust 校验。revision/version 是 Rust u64，当前映射为 number；后续 IPC 调用封装需处理超出 Number.MAX_SAFE_INTEGER 的情况，不能假定整个 u64 范围都能在 JS 中无损表达。
+
+本阶段只定义数据结构，未实现 invoke 封装、事件订阅、编辑器状态或图片合成。运行 `cd desktop && npm run build` 已通过 TypeScript 检查与 Vite 构建；遵循仓库约束，未为本次类型声明新增测试代码。
