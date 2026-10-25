@@ -1,5 +1,7 @@
 //! Tauri transport and polling lifecycle. Domain state lives in document-core.
-use creator_document_core::{DocumentError, DocumentStore, ImageDocument, Snapshot};
+use creator_document_core::{
+    DocumentError, DocumentStore, ImageDocument, Node, Snapshot, StyleNode,
+};
 use serde_json::{Map, Value};
 use std::{path::Path, sync::Mutex, time::Duration};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -244,5 +246,33 @@ pub async fn set_module_position(
             &module_id,
             position,
         )
+    })
+}
+
+/// Stateless operations also support modules that are not attached to an open document.
+#[tauri::command]
+pub fn check_module_style(
+    image: Node,
+    style: StyleNode,
+) -> creator_document_core::validation::ValidationReport {
+    creator_document_core::check_style_applicability(&image, &style)
+}
+
+#[tauri::command]
+pub fn apply_module_style(image: Node, style: StyleNode) -> Result<Node> {
+    creator_document_core::apply_style(&image, &style)
+}
+
+#[tauri::command]
+pub async fn apply_document_style(
+    app: AppHandle,
+    state: State<'_, Documents>,
+    session_id: String,
+    expected_version: u64,
+    module_id: String,
+    style: StyleNode,
+) -> Result<Snapshot> {
+    mutate(&app, &state, &session_id, |store| {
+        store.apply_style(&session_id, expected_version, &module_id, &style)
     })
 }

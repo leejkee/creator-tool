@@ -1,6 +1,12 @@
 //! Authoritative image document sessions, independent of Tauri and rendering.
 mod grid;
 mod lifecycle;
+mod processors;
+mod style;
+mod style_application;
+pub use processors::ImageProcessor;
+pub use style::{ModuleResource, ModuleType, StyleNode};
+pub use style_application::{apply_style, check_style_applicability};
 pub mod validation;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -55,15 +61,17 @@ pub struct Node {
     pub children: Vec<PlacedModule>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout: Option<(u32, u32)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub processors: Vec<ImageProcessor>,
     #[serde(flatten)]
     pub properties: Map<String, Value>,
 }
 
 /// A module's location belongs to its parent container, not to the module content.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct PlacedModule {
+pub struct PlacedModule<T = Node> {
     pub position: (u32, u32),
-    pub module: Node,
+    pub module: T,
     #[serde(flatten)]
     pub properties: Map<String, Value>,
 }
@@ -331,6 +339,22 @@ impl DocumentStore {
         let node = grid::find_node_mut(&mut doc.modules, node_id)
             .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", node_id))?;
         for (key, value) in patch {
+            if key == "processors" {
+                // This is a typed field, not a flattened extension property.
+                if value.is_null() {
+                    node.processors.clear();
+                } else {
+                    validation::ValidationReport::from_issues(processors::validate_processors(
+                        &value,
+                        "/processors",
+                        node.kind == "image",
+                    ))
+                    .into_result()?;
+                    node.processors = serde_json::from_value(value)
+                        .map_err(|error| DocumentError::new("INVALID_PROCESSORS", error))?;
+                }
+                continue;
+            }
             if value.is_null() {
                 node.properties.remove(&key);
             } else {

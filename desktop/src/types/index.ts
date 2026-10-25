@@ -8,6 +8,7 @@ export type {
   ImageFit,
   ImageModule,
   ModuleNode,
+  ModuleType,
   PlacedModule,
   RectModule,
   TextModule,
@@ -19,3 +20,5 @@ export type {
   ValidationReport,
   ValidationViolation,
 } from "./validation";
+export type { ModuleResource, ResourceKind, StyleNode } from "./style";
+export type { ImageProcessor } from "./processors";

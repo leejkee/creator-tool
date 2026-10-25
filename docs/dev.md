@@ -12,7 +12,9 @@
 
 这是迁移目标，不表示相关功能已实现。Rust JSON 实现设计与接口见 [Tauri 开发文档](tauri-dev.md)；不直接沿用 Python 线程模型、Qt 桥接、Pillow 绘制或 Windows 文件句柄机制作为新架构要求。
 
-当前图片描述采用 [Tauri JSON 协议 v0.2.0](tauri-json.md)，示例位于 `desktop/examples/grid.image.json`。
+当前图片描述采用 [Tauri JSON 协议 v0.2.0](tauri-json.md)，示例位于 `desktop/examples/grid.image.json`。独立 Style/模块资源的数据定义及一次性应用接口见 [Style 资源及应用](tauri-style.md)。
+
+图片处理链位于 `desktop/src/image-processors/`，统一用 `[函数标识, ...参数]` 表示调用。通过显式注册表映射到实际 TS 函数，提供内置工具适配、顺序调用和错误定位，见 [处理函数映射与执行](tauri-image-processors.md)。这部分可供后续完整合成器复用。
 
 ## 迁移参考
 

@@ -37,6 +37,35 @@ modules 仍是顶层模块列表；本次不改变其画布组合规则，也不
 
 Rust 使用 `Node { layout: Option<(u32, u32)>, children: Vec<PlacedModule>, ... }` 和 `PlacedModule { position: (u32, u32), module: Node, ... }` 表达；叶子模块不设置 layout。暂不引入独立 Tree 类、父指针、坐标映射文件或稠密二维数组。
 
+## 图片处理声明
+
+图片模块可声明 processors 数组，由 TS 处理链在素材加载并解码后按数组顺序调用。每一步接收前一步的输出，全部执行完再由后续布局层应用模块的 width/height/fit 等参数；裁剪、模糊等具体执行顺序由脚本或数组顺序明确表达。
+
+```json
+{
+  "id": "picture",
+  "type": "image",
+  "assetPath": "logo.png",
+  "width": 320,
+  "height": 320,
+  "processors": [
+    ["square-focus.process", 12, 0.5]
+  ]
+}
+```
+
+- 每步统一为非空数组 `[函数标识, ...参数]`。首项必须是非空字符串，按完整标识查找 TS 注册函数；例如 `square-focus.process`，不是文件路径、可执行代码或 Python 请求。
+- 后续参数按顺序保留，可为任意 JSON 值。`["module.fn"]` 表示零个额外参数；`["module.fn",null]` 则明确传入一个 null。Rust 不将参数内部的 id/type/align 等名字当作节点字段校验。
+- processors 可省略或为空数组，表示无处理；非空数组仅允许 image 模块。不接受 null、单个调用数组、单个对象或字符串缩写，必须是调用数组列表。
+- Rust/TS 共用 ImageProcessor 数据契约。Rust 使用 `ImageProcessor { function_id: String, args: Vec<Value> }`，通过自定义 Serde 输出和读取调用数组；TS 为只读元组。Node/StyleNode 使用 Vec<ImageProcessor>，空列表序列化时省略。
+- Style 可指定完整 processors，应用时整体替换，省略时清除旧链；素材引用和文本仍保留。图片 JSON 保存展开后的实际调用声明，不引用 Style 文件。
+- 旧 processor 单字段继续作为不解释的扩展数据保留；新架构不赋予其调用语义。当前也不执行旧 Python/Pillow 脚本。
+- 本分支早期 `{script,function,params}` 格式已替换，读到旧对象声明时拒绝，不隐式转换。patch_document_node 更新 processors 时写入强类型字段，null 或空数组清除处理链。
+
+Rust 负责声明校验、序列化与状态管理，不执行 TS、不查询脚本注册表。TS 的 `src/image-processors/` 已实现显式函数注册表、入口查找和处理链顺序执行，包含未知标识、执行失败及无效输出报告。执行器将当前图片作为隐含的第一个参数，调用 `handler(image, ...args)`；入口返回图像对象或 Promise。执行器等待每一步完成，保护输入图片和参数；参数数量、类型和范围由注册入口检查。完整 Engine 的资源加载、布局及整图合成尚未实现；后续预览和导出复用此调用流程。Web Canvas 需要 WebView/浏览器，不依赖 Node.js 执行图片处理。接口和内置标识见 [处理函数映射与执行](tauri-image-processors.md)。
+
+实际示例见 [上图下文 Style](../tmp/style-image-caption/README.md)：居中裁剪最大正方形 → 保留中央内切圆清晰、四角模糊；下方文字居中加粗。
+
 ## 编辑与校验
 
 - set_group_layout 修改指定 group 的行列数；零行列或导致已有模块越界时拒绝，绝不自动删除或移动内容。

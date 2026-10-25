@@ -1,0 +1,28 @@
+{
+  "resourceKind": "style",
+  "module": {
+    "type": "group",
+    "layout": [2, 1],
+    "gap": 12,
+    "style": {"background": "#20212A", "radius": 12},
+    "children": [
+      {
+        "position": [0, 0],
+        "module": {
+          "type": "image",
+          "width": 128,
+          "height": 128,
+          "fit": "contain",
+          "style": {"radius": 8}
+        }
+      },
+      {
+        "position": [1, 0],
+        "module": {
+          "type": "text",
+          "style": {"fontSize": 28, "color": "#FFFFFF", "align": "center"}
+        }
+      }
+    ]
+  }
+}

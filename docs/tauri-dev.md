@@ -6,7 +6,7 @@ Rust 是已打开图片文档的唯一权威状态管理者，负责文件 I/O�
 
 图片模块树就是内存文档，JSON 是存储格式，不建立另一份独立可编辑的 JSON 状态。前端拖动结束或确认输入后提交正式修改；后端校验成功后返回完整的新状态。前端不得在请求失败时将本地草稿当成已提交文档。
 
-本阶段实现新建、从已保存 JSON 模板创建、文档会话、加载与校验、模块修改、整份文档提交、保存与另存为、外部变化检测与显式重载。不迁移 GUI、合成器、Style/Template 解析、旧格式转换、撤销重做或三方合并。
+本阶段实现新建、从已保存 JSON 模板创建、文档会话、加载与校验、模块修改、Style 对象的一次性应用、整份文档提交、保存与另存为、外部变化检测与显式重载。不迁移 GUI、合成器、全局 Style/Template 资源库解析、旧格式转换、撤销重做或三方合并。
 
 ## 数据与会话
 
@@ -51,12 +51,17 @@ Rust 是已打开图片文档的唯一权威状态管理者，负责文件 I/O�
 | `set_group_layout` | sessionId、expectedVersion、groupId、layout（二元组） | 修改网格后的快照 |
 | `set_module_position` | sessionId、expectedVersion、groupId、moduleId、position（二元组） | 修改放置位置后的快照 |
 | `patch_document_node` | sessionId、expectedVersion、nodeId、patch | 修改指定节点后的快照 |
+| `check_module_style` | image（Node）、style（StyleNode） | 校验及匹配报告，不修改对象或会话 |
+| `apply_module_style` | image（Node）、style（StyleNode） | 校验后返回独立的新 Node，不提交会话 |
+| `apply_document_style` | sessionId、expectedVersion、moduleId、style | 一次性应用后的会话快照，不自动保存 |
 | `save_document` | sessionId、expectedVersion | 保存后快照 |
 | `check_document_file` | sessionId | 检查磁盘后的快照 |
 | `reload_document` | sessionId、expectedVersion、discardChanges | 从当前磁盘内容重新加载后的快照 |
 | `close_document` | sessionId、expectedVersion、discardChanges | 无；成功发送 `document-closed`，载荷为 sessionId |
 
 `patch` 按属性整体替换，null 删除属性；嵌套 style 对象不会深度合并。禁止通过 patch 修改 id/type/children/layout/position/module/span/elements，结构编辑提交完整 document。提交的 document 保留当前 documentId、协议版本和 revision，Rust 校验成功后增加 revision。整体提交可编辑画布、模块结构及其保留属性，但不会解析 Style 引用或查询素材。
+
+processors 补丁接受完整调用数组列表，更新 Node 的强类型字段，不写入扩展属性；null 或空数组清除处理链。此补丁的声明错误路径相对于目标模块，例如 `/processors/0/0`；整份文档校验路径仍从文档根开始。失败不提交任何属性或版本修改。
 
 外部状态 `externalChange=null` 表示磁盘仍为基线；否则为 `{kind:"modified", document, error}`、`{kind:"missing"}` 或 `{kind:"unreadable", error}`。有效候选提供 document，无效 JSON 或身份改变提供 error。界面应独立展示 dirty 和 externalChange。
 
@@ -162,6 +167,7 @@ cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --all-ta
 | children 内的 position | 必填，不接受 null | 非负整数二元组 [行, 列]，不越界、不重复占位 |
 | children 内的 module | 必填，不接受 null | 嵌套的模块对象 |
 | style.align | style 为对象时检查；可省略，出现时不可为 null 或空字符串 | left / center / right |
+| processors | 可省略或为空数组，不接受 null；非空只允许 image | 每项为 [非空函数标识, ...JSON 参数]，保留参数顺序，拒绝旧对象格式 |
 
 “必须有但可为空”已由 modules、text 等字段体现。规则框架也支持“必须有且允许 null”，但目前没有擅自将已有字段改成可为 null。字段类型与非空约束通过后才判断枚举，避免同一字段产生重复的连带错误。
 
@@ -189,6 +195,7 @@ validate_image_json 可在不打开文件时检查原始文本并一次返回所
 | types/document.ts | ImageDocument、ModuleNode 联合类型、PlacedModule、网格二元组 | ImageDocument / Node / PlacedModule |
 | types/session.ts | DocumentSnapshot、ExternalChange、事件载荷映射 | Snapshot / ExternalChange / Tauri 事件 |
 | types/validation.ts | DocumentError、ValidationIssue/Report、Violation 名称 | 错误与校验报告 |
+| types/processors.ts | ImageProcessor 脚本调用声明 | ImageProcessor / Node.processors / StyleNode.processors |
 
 文字、图片、矩形和组合模块通过 type 标签区分；组合模块的 layout 必填，children 可省略；叶子模块允许空 children 且不声明 layout。position 始终在放置记录中。全部已声明成员及嵌套数组、JSON 对象为 readonly；实际类型收窄和数据校验仍由 Rust/后续资源解析承担，readonly 不会在运行时冻结对象。
 
@@ -198,4 +205,10 @@ ExternalChange 的 kind 与 Rust 序列化标签一致；modified 的 document/e
 
 Rust u32 坐标与尺寸映射为 TS number，整数及范围由 Rust 校验。revision/version 是 Rust u64，当前映射为 number；后续 IPC 调用封装需处理超出 Number.MAX_SAFE_INTEGER 的情况，不能假定整个 u64 范围都能在 JS 中无损表达。
 
-本阶段只定义数据结构，未实现 invoke 封装、事件订阅、编辑器状态或图片合成。运行 `cd desktop && npm run build` 已通过 TypeScript 检查与 Vite 构建；遵循仓库约束，未为本次类型声明新增测试代码。
+types 目录只定义数据结构；Style 的 invoke 封装位于 `src/styles/`，事件订阅、编辑器状态及图片合成尚未实现。运行 `cd desktop && npm run build` 已通过 TypeScript 检查与 Vite 构建；遵循仓库约束，未为类型声明新增测试代码。
+
+## Style 资源及应用
+
+已定义 Rust/TS 的 ModuleResource（resourceKind=image/style）和 StyleNode，两类资源复用泛型 PlacedModule 及网格坐标。Rust 提供 check_style_applicability / apply_style 和 DocumentStore::apply_style；TS 通过 src/styles/ 调用同一套实现。先检查模块类型、布局、位置和参数，再在副本中整体替换参数，保留内容、ID 和结构。会话提交沿用版本及 dirty 管理。完整接口、参数范围及限制见 [Style 资源及应用](tauri-style.md)。
+
+processors 已作为强类型调用声明接入图片和 Style，应用时整体替换；Rust 校验声明但不执行 TS。TS 的 src/image-processors/ 提供函数注册表、内置工具适配及异步顺序执行器，负责字符串到实际入口的映射、失败报告和输入保护。完整资源加载、布局及整图合成留待后续实现。接口见 [处理函数映射与执行](tauri-image-processors.md)，实际示例接线位于 [tmp/style-image-caption](../tmp/style-image-caption/README.md)。

@@ -1,4 +1,5 @@
 import type { ExtensionFields, JsonObject } from "./json";
+import type { ImageProcessor } from "./processors";
 
 /** Corresponds to creator_document_core::DOCUMENT_VERSION. */
 export type DocumentVersion = "v0.2.0";
@@ -30,6 +31,8 @@ export interface TextModule extends LeafModule {
 
 export interface ImageModule extends LeafModule {
   readonly type: "image";
+  /** Runs in array order before fitting the result into the module bounds. */
+  readonly processors?: readonly ImageProcessor[];
 }
 
 export interface RectModule extends LeafModule {
@@ -46,10 +49,12 @@ export interface GroupModule extends ModuleBase {
 /** Validated view of the serialized Rust Node, discriminated by `type`. */
 export type ModuleNode = TextModule | ImageModule | RectModule | GroupModule;
 
+export type ModuleType = ModuleNode["type"];
+
 /** Corresponds to Rust PlacedModule; position belongs to the parent relation. */
-export interface PlacedModule extends ExtensionFields {
+export interface PlacedModule<T = ModuleNode> extends ExtensionFields {
   readonly position: GridPosition;
-  readonly module: ModuleNode;
+  readonly module: T;
 }
 
 export interface ImageDocument extends ExtensionFields {

@@ -104,7 +104,7 @@ pub struct ValidationReport {
     pub issues: Vec<ValidationIssue>,
 }
 impl ValidationReport {
-    fn from_issues(issues: Vec<ValidationIssue>) -> Self {
+    pub(crate) fn from_issues(issues: Vec<ValidationIssue>) -> Self {
         Self {
             valid: issues.is_empty(),
             issues,
@@ -123,7 +123,12 @@ impl ValidationReport {
         }
     }
 }
-fn issue(code: &str, rule: Violation, path: &str, message: impl Into<String>) -> ValidationIssue {
+pub(crate) fn issue(
+    code: &str,
+    rule: Violation,
+    path: &str,
+    message: impl Into<String>,
+) -> ValidationIssue {
     ValidationIssue {
         code: code.into(),
         rule,
@@ -131,7 +136,7 @@ fn issue(code: &str, rule: Violation, path: &str, message: impl Into<String>) ->
         message: message.into(),
     }
 }
-fn child(path: &str, key: &str) -> String {
+pub(crate) fn child(path: &str, key: &str) -> String {
     format!("{}/{}", path, key.replace('~', "~0").replace('/', "~1"))
 }
 
@@ -204,7 +209,7 @@ pub fn validate_fields(
 
 use ValueKind::{Array, Object, String as Text, UnsignedInteger};
 const NODE_TYPES: &[&str] = &["text", "image", "rect", "group"];
-const FIT: &[&str] = &["contain", "cover", "stretch", "height", "width"];
+pub(crate) const FIT: &[&str] = &["contain", "cover", "stretch", "height", "width"];
 const ALIGN: &[&str] = &["left", "center", "right"];
 const DOCUMENT: &[FieldRule] = &[
     FieldRule::required("image-create-tool-version", Text)
@@ -231,7 +236,7 @@ const NODE: &[FieldRule] = &[
         .one_of(FIT)
         .code("INVALID_FIT"),
 ];
-const STYLE: &[FieldRule] = &[FieldRule::optional("align", Text)
+pub(crate) const STYLE: &[FieldRule] = &[FieldRule::optional("align", Text)
     .one_of(ALIGN)
     .code("INVALID_STYLE")];
 
@@ -265,6 +270,13 @@ fn visit_node(
         return;
     };
     issues.extend(validate_fields(node, path, NODE));
+    if let Some(processors) = node.get("processors") {
+        issues.extend(crate::processors::validate_processors(
+            processors,
+            &child(path, "processors"),
+            node.get("type").and_then(Value::as_str) == Some("image"),
+        ));
+    }
     for key in ["elements", "position", "span"] {
         if node.contains_key(key) {
             issues.push(issue(
@@ -404,6 +416,13 @@ fn visit_node(
             }
         }
     }
+}
+
+/// Validate a standalone actual module, including its descendants and unique IDs.
+pub fn validate_module(value: &Value) -> ValidationReport {
+    let mut issues = Vec::new();
+    visit_node(value, "", &mut HashSet::new(), &mut issues);
+    ValidationReport::from_issues(issues)
 }
 
 /// Inspect the original JSON so missing fields and explicit null stay distinguishable.

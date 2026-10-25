@@ -23,3 +23,7 @@ CARGO_TARGET_DIR=/tmp/creator-miyue-demo-target cargo run --manifest-path tmp/Ca
 ## TS 图片处理实图示例
 
 [image-tools-demo/](image-tools-demo/README.md) 保存安琪拉原图，以及通过真实 TS 工具生成的矩形裁剪、圆形裁剪、0.5 倍和 2 倍缩放、整图模糊及圆内清晰的局部模糊 PNG；附有参数、哈希记录和可重复运行脚本。
+
+## Style 与 TS 处理声明示例
+
+[style-image-caption/](style-image-caption/README.md) 包含上图下文 Style、应用前后的图片 JSON，以及先居中裁正方形、再保留清晰内切圆并模糊四角的 TS 脚本。文字居中加粗；process-image.ts 使用真实注册表将 JSON 中的 processors 字符串映射为函数，并执行处理链。

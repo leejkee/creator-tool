@@ -1,0 +1,27 @@
+{
+  "image-create-tool-version": "v0.2.0",
+  "documentId": "square-focus-caption-example",
+  "revision": 0,
+  "composition": {"width": 352, "height": "auto", "padding": 16},
+  "modules": [
+    {
+      "id": "card",
+      "type": "group",
+      "layout": [2, 1],
+      "children": [
+        {
+          "position": [0, 0],
+          "module": {
+            "id": "picture",
+            "type": "image",
+            "assetPath": "../image-tools-demo/original.png"
+          }
+        },
+        {
+          "position": [1, 0],
+          "module": {"id": "caption", "type": "text", "text": "安琪拉"}
+        }
+      ]
+    }
+  ]
+}

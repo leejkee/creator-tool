@@ -6,6 +6,8 @@
 - 旧 Python 图片 JSON 协议（迁移参考）：@image_create_tool/resources/JSON_PROTOCOL.md
 - 开发说明：@docs/dev.md
 - Tauri JSON 实现：@docs/tauri-dev.md
+- Style/模块资源数据定义与应用：@docs/tauri-style.md
+- TS 图片处理函数注册与调用：@docs/tauri-image-processors.md
 - 旧 Python 代码规范（待废弃，不适用于 Rust / TypeScript）：@docs/CODING_STANDARDS.md
 
 ## 当前开发方向
