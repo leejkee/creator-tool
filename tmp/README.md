@@ -1,6 +1,6 @@
 # 芈月真实数据调用示例
 
-本目录暂时纳入 Git，不添加 gitignore 规则。
+本目录的示例源码、JSON、说明及演示 PNG 纳入 Git；`.gitignore` 忽略 Rust `target/`、前端 `node_modules/`、构建输出及缓存。`Cargo.lock` 保留，用于复现依赖版本。已存在的本地构建产物可以继续使用，不再跟踪。
 
 - `main.rs`：通过相对路径依赖调用真实 `creator-document-core`，只为旧芈月攻略做一次临时格式转换，不是产品通用迁移器。
 - `miyue-v0.2.image.json`：转换后的图片文档，4 个顶层模块、83 个节点，素材目录相对本文件为 `../tool_test/assets`。

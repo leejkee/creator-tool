@@ -1,0 +1,11 @@
+# Rust compilation outputs, including nested example crates.
+target/
+
+# Frontend dependencies, generated bundles and caches.
+node_modules/
+dist/
+build/
+.vite/
+.cache/
+coverage/
+*.tsbuildinfo
