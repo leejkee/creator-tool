@@ -17,7 +17,6 @@ fn with_store<T>(
     let mut store = state.0.lock().map_err(|_| DocumentError {
         code: "STATE_UNAVAILABLE".into(),
         message: "Document state lock is poisoned; restart the application".into(),
-        issues: Vec::new(),
     })?;
     action(&mut store)
 }
@@ -206,14 +205,6 @@ pub async fn save_document_as(
     })
 }
 
-/// Validate editor JSON without opening a file or changing any session state.
-#[tauri::command]
-pub async fn validate_image_json(
-    json_text: String,
-) -> creator_document_core::validation::ValidationReport {
-    creator_document_core::validation::validate_json(&json_text)
-}
-
 #[tauri::command]
 pub async fn set_group_layout(
     app: AppHandle,
@@ -250,14 +241,6 @@ pub async fn set_module_position(
 }
 
 /// Stateless operations also support modules that are not attached to an open document.
-#[tauri::command]
-pub fn check_module_style(
-    image: Node,
-    style: StyleNode,
-) -> creator_document_core::validation::ValidationReport {
-    creator_document_core::check_style_applicability(&image, &style)
-}
-
 #[tauri::command]
 pub fn apply_module_style(image: Node, style: StyleNode) -> Result<Node> {
     creator_document_core::apply_style(&image, &style)

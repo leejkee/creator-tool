@@ -56,7 +56,7 @@ const output = await runImageProcessors(
 - 先检查整个数组的声明并解析所有入口，同时复制参数。某个标识缺失时不执行任何步骤；异步运行期间外部修改声明或参数不会改变已准备的调用。
 - 每次执行先复制输入图像，脚本处理独立图像；每个步骤接收上一项结果，await 完成后才进入下一项。即使脚本就地修改后抛出异常，调用者的原图和参数仍保留。
 - 每一步输出必须为有效、非空、已解码的 Canvas 可绘制图像。失败立即停止，后续步骤不运行，不返回部分结果。成功返回最后一步的图像；空链也返回独立副本。
-- Rust 继续负责声明结构和文档状态；TS 注册表负责实际入口查找，具体参数范围由函数检查。不根据 JSON 字符串动态加载文件，也不将字符串作为代码执行。
+- Rust 仅负责现有声明结构的序列化/反序列化和文档状态，不再检查标识非空或声明所属模块类型；TS 注册表负责实际入口查找，具体参数范围由函数检查。不根据 JSON 字符串动态加载文件，也不将字符串作为代码执行。
 
 ## 错误与范围
 
@@ -75,4 +75,4 @@ ImageProcessorError 含 code、message、context 和 cause。context 带 functio
 
 不接受本分支早期的 `{script,function,params}` 对象格式，不进行隐式转换。图片和 Style 使用相同调用数组，Rust 序列化与反序列化、普通节点补丁和 TS 执行器都遵循这一格式。
 
-验证通过：现有 68 个 Rust 测试、Rust/Tauri Clippy、TypeScript/Vite 构建、临时示例类型检查，以及仓库外 55 项 Rust 检查和 75 项浏览器检查。覆盖调用数组往返、Style 应用、补丁编辑、参数顺序、内置映射与直接调用逐像素一致、异步顺序、未知/重复标识、旧格式拒绝、参数复制、失败隔离和输出校验。浏览器结果见 [processing-result.json](../tmp/style-image-caption/processing-result.json)，未新增仓库测试代码。
+移除 Rust 业务校验前的验证记录：68 个 Rust 测试、Rust/Tauri Clippy、TypeScript/Vite 构建、临时示例类型检查，以及仓库外 55 项 Rust 检查和 75 项浏览器检查。覆盖调用数组往返、Style 应用、补丁编辑、参数顺序、内置映射与直接调用逐像素一致、异步顺序、未知/重复标识、旧格式拒绝、参数复制、失败隔离和输出校验。TS 运行时检查保持原样；旧 Rust 校验结果不代表当前仍启用相关规则。浏览器结果见 [processing-result.json](../tmp/style-image-caption/processing-result.json)，未新增仓库测试代码。

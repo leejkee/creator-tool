@@ -12,7 +12,6 @@
           "type": "image",
           "width": 128,
           "height": 128,
-          "fit": "contain",
           "style": {"radius": 8}
         }
       },

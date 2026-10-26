@@ -14,11 +14,6 @@ export type {
   TextModule,
 } from "./document";
 export type { DocumentEventMap, DocumentSnapshot, ExternalChange } from "./session";
-export type {
-  DocumentError,
-  ValidationIssue,
-  ValidationReport,
-  ValidationViolation,
-} from "./validation";
+export type { DocumentError } from "./errors";
 export type { ModuleResource, ResourceKind, StyleNode } from "./style";
 export type { ImageProcessor } from "./processors";

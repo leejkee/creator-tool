@@ -3,18 +3,9 @@ import type {
   DocumentSnapshot,
   ModuleNode,
   StyleNode,
-  ValidationReport,
 } from "../types";
 
-/** Check without changing the module or any open document. Rules live in Rust. */
-export function checkStyleApplicability(
-  image: ModuleNode,
-  style: StyleNode,
-): Promise<ValidationReport> {
-  return invoke<ValidationReport>("check_module_style", { image, style });
-}
-
-/** Always validates first. Returns a new module; does not commit or save it. */
+/** Returns a new module without business validation; does not commit or save it. */
 export function applyStyle(
   image: ModuleNode,
   style: StyleNode,
@@ -22,7 +13,7 @@ export function applyStyle(
   return invoke<ModuleNode>("apply_module_style", { image, style });
 }
 
-/** Validate and commit once to Rust's authoritative session, without saving to disk. */
+/** Apply and commit once to Rust's authoritative session, without saving to disk. */
 export function applyDocumentStyle(
   sessionId: string,
   expectedVersion: number,

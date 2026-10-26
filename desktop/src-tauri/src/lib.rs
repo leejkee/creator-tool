@@ -18,7 +18,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             documents::open_document,
-            documents::validate_image_json,
             documents::create_document,
             documents::save_document_as,
             documents::get_document,
@@ -27,7 +26,6 @@ pub fn run() {
             documents::patch_document_node,
             documents::set_group_layout,
             documents::set_module_position,
-            documents::check_module_style,
             documents::apply_module_style,
             documents::apply_document_style,
             documents::save_document,

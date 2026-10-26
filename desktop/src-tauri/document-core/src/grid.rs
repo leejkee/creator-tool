@@ -35,9 +35,6 @@ impl DocumentStore {
         let mut document = session.state.document.clone();
         let group = find_node_mut(&mut document.modules, group_id)
             .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", group_id))?;
-        if group.kind != "group" {
-            return Err(DocumentError::new("NOT_A_GROUP", group_id));
-        }
         group.layout = Some(layout);
         session.commit(document)
     }
@@ -56,9 +53,6 @@ impl DocumentStore {
         let mut document = session.state.document.clone();
         let group = find_node_mut(&mut document.modules, group_id)
             .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", group_id))?;
-        if group.kind != "group" {
-            return Err(DocumentError::new("NOT_A_GROUP", group_id));
-        }
         let placed = group
             .children
             .iter_mut()

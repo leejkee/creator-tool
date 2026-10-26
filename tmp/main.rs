@@ -10,15 +10,7 @@ use std::{
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 fn core<T>(result: creator_document_core::Result<T>) -> Result<T> {
-    result.map_err(|error| {
-        format!(
-            "{}: {}\n{}",
-            error.code,
-            error.message,
-            serde_json::to_string_pretty(&error.issues).unwrap()
-        )
-        .into()
-    })
+    result.map_err(|error| format!("{}: {}", error.code, error.message).into())
 }
 
 /// Only the row/column layouts actually used by this acceptance document are migrated.
@@ -260,7 +252,6 @@ fn main() -> Result<()> {
 
     // Construct an actual ImageDocument using the production business crate.
     let document = core(ImageDocument::from_value(Value::Object(converted)))?;
-    core(document.validate())?;
     assert_eq!(document.properties["sourceNotes"], legacy["sourceNotes"]);
     let mut ids = HashSet::new();
     let mut text = BTreeMap::new();

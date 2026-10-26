@@ -14,7 +14,7 @@ CARGO_TARGET_DIR=/tmp/creator-miyue-demo-target cargo run --manifest-path tmp/Ca
 
 构建产物以及每次运行生成的 JSON 和模块目录放在系统临时目录，避免将二进制与会话产物加入 Git。实际路径由程序打印；读取仓库位置依据 Cargo 清单目录，不依赖 `/workspace` 或运行时当前目录。
 
-程序验证：旧格式被新模型拒绝；转换为 v0.2.0 网格；构造 ImageDocument；原有 ID、文字与 sourceNotes 保留；19 个素材文件可读取；JSON 序列化往返一致；从转换模板创建新模块，并重新打开会话。仓库中的 JSON 原件不会被改写。
+程序验证：旧示例无法反序列化为现有模型；转换为 v0.2.0 网格；构造 ImageDocument；原有 ID、文字与 sourceNotes 保留；19 个素材文件可读取；JSON 序列化往返一致；从转换模板创建新模块，并重新打开会话。Rust 业务校验已移除，不再调用 ImageDocument::validate。仓库中的 JSON 原件不会被改写。
 
 旧 group 标题展开为文本子模块，itemRow 展开为图片及文字放置记录，column/row 布局转为网格二元组。仅支持这份数据实际使用的旧布局，不静默猜测其他布局。
 

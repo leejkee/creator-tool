@@ -253,7 +253,6 @@ impl DocumentStore {
             .properties
             .entry("assetsDir")
             .or_insert(Value::String("assets/".into()));
-        document.validate()?;
         let module_directory = base.join(module_name);
         fs::create_dir(&module_directory).map_err(|e| {
             DocumentError::new(

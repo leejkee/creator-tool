@@ -5,9 +5,6 @@ mod processors;
 mod style;
 mod style_application;
 pub use processors::ImageProcessor;
-pub use style::{ModuleResource, ModuleType, StyleNode};
-pub use style_application::{apply_style, check_style_applicability};
-pub mod validation;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{
@@ -16,21 +13,20 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+pub use style::{ModuleResource, ModuleType, StyleNode};
+pub use style_application::apply_style;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentError {
     pub code: String,
     pub message: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub issues: Vec<validation::ValidationIssue>,
 }
 impl DocumentError {
     fn new(code: &str, message: impl ToString) -> Self {
         Self {
             code: code.into(),
             message: message.to_string(),
-            issues: Vec::new(),
         }
     }
 }
@@ -78,43 +74,13 @@ pub struct PlacedModule<T = Node> {
 
 impl ImageDocument {
     pub fn from_value(value: Value) -> Result<Self> {
-        validation::validate_document(&value).into_result()?;
         serde_json::from_value(value).map_err(|e| DocumentError::new("INVALID_JSON", e))
     }
     pub fn parse(bytes: &[u8]) -> Result<Self> {
         let bytes = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(bytes);
-        let value: Value =
-            serde_json::from_slice(bytes).map_err(|e| DocumentError::new("INVALID_JSON", e))?;
-        let report = validation::validate_document(&value);
-        if value
-            .get("image-create-tool-version")
-            .and_then(Value::as_str)
-            .is_some_and(|version| version != DOCUMENT_VERSION)
-        {
-            let mut error = DocumentError::new(
-                "UNSUPPORTED_FORMAT",
-                "Expected image-create-tool-version v0.2.0",
-            );
-            error.issues = report.issues;
-            return Err(error);
-        }
-        // Deserialize the original text to retain duplicate structural field checks.
-        let document: Self = serde_json::from_slice(bytes).map_err(|e| {
-            let mut error = DocumentError::new("INVALID_JSON", e);
-            error.issues = report.issues.clone();
-            error
-        })?;
-        // Check raw JSON before optional/defaulted fields lose presence information.
-        report.into_result()?;
-        Ok(document)
-    }
-    pub fn validate(&self) -> Result<()> {
-        let value =
-            serde_json::to_value(self).map_err(|e| DocumentError::new("SERIALIZE_FAILED", e))?;
-        validation::validate_document(&value).into_result()
+        serde_json::from_slice(bytes).map_err(|e| DocumentError::new("INVALID_JSON", e))
     }
     pub fn encode(&self) -> Result<Vec<u8>> {
-        self.validate()?;
         let mut bytes = serde_json::to_vec_pretty(self)
             .map_err(|e| DocumentError::new("SERIALIZE_FAILED", e))?;
         bytes.push(b'\n');
@@ -137,7 +103,7 @@ pub enum ExternalChange {
 // Error equality lets polling suppress duplicate notifications.
 impl PartialEq for DocumentError {
     fn eq(&self, other: &Self) -> bool {
-        self.code == other.code && self.message == other.message && self.issues == other.issues
+        self.code == other.code && self.message == other.message
     }
 }
 
@@ -240,7 +206,6 @@ impl Session {
                 "revision is managed by Rust",
             ));
         }
-        document.validate()?;
         if document == self.state.document {
             return Ok(self.state.clone());
         }
@@ -314,7 +279,7 @@ impl DocumentStore {
         session.require_version(expected)?;
         session.commit(document)
     }
-    /// Patch node properties atomically. null removes a property; IDs/types/children are structural.
+    /// Patch extension properties atomically. Typed structural fields use dedicated operations.
     pub fn patch_node(
         &mut self,
         id: &str,
@@ -324,12 +289,10 @@ impl DocumentStore {
     ) -> Result<Snapshot> {
         let session = self.session(id)?;
         session.require_version(expected)?;
-        if patch.keys().any(|key| {
-            matches!(
-                key.as_str(),
-                "id" | "type" | "elements" | "children" | "layout" | "position" | "module" | "span"
-            )
-        }) {
+        if patch
+            .keys()
+            .any(|key| matches!(key.as_str(), "id" | "type" | "children" | "layout"))
+        {
             return Err(DocumentError::new(
                 "STRUCTURAL_PATCH",
                 "Use replace_document for structural edits",
@@ -344,12 +307,6 @@ impl DocumentStore {
                 if value.is_null() {
                     node.processors.clear();
                 } else {
-                    validation::ValidationReport::from_issues(processors::validate_processors(
-                        &value,
-                        "/processors",
-                        node.kind == "image",
-                    ))
-                    .into_result()?;
                     node.processors = serde_json::from_value(value)
                         .map_err(|error| DocumentError::new("INVALID_PROCESSORS", error))?;
                 }

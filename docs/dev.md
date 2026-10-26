@@ -14,6 +14,8 @@
 
 当前图片描述采用 [Tauri JSON 协议 v0.2.0](tauri-json.md)，示例位于 `desktop/examples/grid.image.json`。独立 Style/模块资源的数据定义及一次性应用接口见 [Style 资源及应用](tauri-style.md)。
 
+2026-10-26 起，Rust 已移除文档、网格、Style 和处理声明的业务校验，只保留现有 Serde 结构转换要求及文件 I/O、会话保护。TS 类型描述预期契约，不表示来自 Rust 的扩展字段已经过运行时校验；校验方案后续再设计。
+
 图片处理链位于 `desktop/src/image-processors/`，统一用 `[函数标识, ...参数]` 表示调用。通过显式注册表映射到实际 TS 函数，提供内置工具适配、顺序调用和错误定位，见 [处理函数映射与执行](tauri-image-processors.md)。这部分可供后续完整合成器复用。
 
 ## 迁移参考

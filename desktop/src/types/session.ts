@@ -1,5 +1,5 @@
 import type { ImageDocument } from "./document";
-import type { DocumentError } from "./validation";
+import type { DocumentError } from "./errors";
 
 /** Same internally tagged representation as Rust ExternalChange. */
 export type ExternalChange =

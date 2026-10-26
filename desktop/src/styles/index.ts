@@ -1,1 +1,1 @@
-export { applyDocumentStyle, applyStyle, checkStyleApplicability } from "./apply-style";
+export { applyDocumentStyle, applyStyle } from "./apply-style";
