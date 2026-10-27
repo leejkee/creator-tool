@@ -33,6 +33,22 @@ Rust 是已打开图片文档的唯一权威状态管理者，负责文件 I/O�
 
 纯 Rust 文档核心位于 `desktop/src-tauri/document-core/`，Tauri 命令与后台轮询适配位于 `desktop/src-tauri/src/`。核心不依赖 GUI/WebView，可独立构建。
 
+核心源码按职责拆分，类型与相关实现放在同一模块中：
+
+| 文件 | 职责 |
+| --- | --- |
+| lib.rs | 声明模块，通过 pub use 统一导出公共 API |
+| document.rs | ImageDocument、Node、PlacedModule、协议版本常量及 JSON 编解码 |
+| error.rs | DocumentError、Result 类型别名及错误比较 |
+| session.rs | Snapshot、ExternalChange、Session、DocumentStore，以及版本、保存基线与外部变化管理 |
+| storage.rs | 新文件写入和已有文件的原子替换 |
+| lifecycle.rs | 新建、另存为、命名规则和资源路径重定位 |
+| grid.rs | 节点查找、网格尺寸与放置坐标修改 |
+| style.rs / style_application.rs | Style 资源定义及一次性应用 |
+| processors.rs | 图片处理调用数组的 Serde 编解码 |
+
+调用方继续从 creator_document_core 根路径导入原有类型和函数；模块内协作所需的接口使用 pub(super)，Session 及其内部状态不对外导出。拆分保持现有数据格式和业务行为，不恢复已移除的校验规则，也不新增或修改测试代码。
+
 初期实现按仓库约束未新增测试代码；现已获得用户明确授权，为 creator-document-core 添加正式集成测试。验证包括 Rust 格式检查、核心与 Tauri 编译检查，以及临时目录中的真实文件 I/O 测试；结果与限制记录在本文后部。
 
 ## Tauri 命令契约

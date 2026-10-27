@@ -1,5 +1,13 @@
 //! File creation and Save As. These operations never overwrite an existing destination.
-use super::*;
+use crate::{
+    DOCUMENT_VERSION, DocumentError, DocumentStore, ImageDocument, Node, Result, Snapshot,
+    session::Session, storage::write_new,
+};
+use serde_json::{Map, Value};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use uuid::Uuid;
 
 fn validate_name(name: &str) -> Result<()> {
@@ -114,30 +122,6 @@ fn rebase_document(doc: &mut ImageDocument, source: &Path) {
     for node in &mut doc.modules {
         visit(node, source);
     }
-}
-
-fn write_new(path: &Path, document: &ImageDocument) -> Result<Vec<u8>> {
-    let bytes = document.encode()?;
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|e| {
-            DocumentError::new(
-                if e.kind() == std::io::ErrorKind::AlreadyExists {
-                    "FILE_EXISTS"
-                } else {
-                    "WRITE_FAILED"
-                },
-                e,
-            )
-        })?;
-    if let Err(error) = file.write_all(&bytes).and_then(|_| file.sync_all()) {
-        drop(file);
-        let _ = fs::remove_file(path);
-        return Err(DocumentError::new("WRITE_FAILED", error));
-    }
-    Ok(bytes)
 }
 
 impl DocumentStore {
