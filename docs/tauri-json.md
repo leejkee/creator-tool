@@ -10,6 +10,14 @@ modules 仍是顶层模块列表；本次不改变其画布组合规则，也不
 
 模块约定使用非空 id、type，type 为 text/image/rect/group，模块 ID 在文档内唯一，text 模块提供 text 字符串。Rust 当前只将 id/type 解码为字符串，不检查非空、枚举或唯一性，也不检查 text 内容。样式、素材引用和其他扩展字段随模块保存；elements、模块内的 position 及 span 也不再因业务规则被拒绝，但不会自动转换为现有网格结构。
 
+## 本地素材引用（新 TS 方案）
+
+新渲染方案统一使用 `assetPath` 引用用户准备好的本地图片文件，相对路径以图片 JSON 所在目录为基准，也支持绝对本地路径。素材准备由用户完成，应用只读取最终本地文件。普通图片与图片背景采用同一规则。
+
+`assetId`、`assetQuery`、`assetsDir`、`assetAliases` 属于旧方案，Rust 仍可保留读写，但不表示新 TS 渲染层支持素材 ID、搜索或别名解析。旧样例使用这些字段时需要迁移。
+
+路径输入检查入口为 `src/render-input/asset.ts` 的 `resolveLocalImagePath`；缺省或空白值返回 `undefined`，非法类型、NUL 或 URI 形式报错。目录解析、读取和解码尚未实现。
+
 ## 渲染默认值示例：图片 fit
 
 渲染默认值由 `desktop/src/render-input/` 统一解析。TS 数据契约保留字段的可选性，解析函数为省略字段补默认值，不修改文档或回写 JSON。此处先实现图片模块的 fit，其他渲染字段尚未纳入。解析器自身不执行校验，Rust 当前也不检查 fit。

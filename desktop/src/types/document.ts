@@ -43,6 +43,8 @@ export interface TextModule extends LeafModule {
 
 export interface ImageModule extends LeafModule {
   readonly type: "image";
+  /** Prepared local file; relative paths use the JSON document's directory. */
+  readonly assetPath?: string;
   /** Runs in array order before fitting the result into the module bounds. */
   readonly processors?: readonly ImageProcessor[];
 }
