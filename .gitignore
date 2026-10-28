@@ -8,8 +8,5 @@ cache/
 .*.json.lock
 build/
 dist/
-tool_test/wheelhouse/
-tool_test/app_config/
-tool_test/refactor_project/*.png
-tool_test/refactor_*.png
+/tmp/
 

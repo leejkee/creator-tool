@@ -1,6 +1,6 @@
 # 图片 JSON 编辑器
 
-基于 Tauri 的本地图片创作工具：使用独立 JSON 描述模块内容、网格和样式，通过共享的 TypeScript 渲染逻辑预览并导出 PNG。后续开发围绕 `desktop/` 进行，旧 Python 工程只保留为迁移参考。
+基于 Tauri 的本地图片创作工具：使用独立 JSON 描述模块内容、网格和样式，通过共享的 TypeScript 渲染逻辑预览并导出 PNG。核心迁移基本完成，后续开发以 `desktop/` 为基础；旧 Python 工程仅保留为历史参考，不继续维护迁移演示。
 
 ## 需求入口
 
@@ -14,7 +14,9 @@
 
 需求只在上述文档定义；开发约束见 [AGENTS.md](AGENTS.md)。源码说明实际实现，不以历史演示或旧文档补充当前需求。
 
-## 当前进度
+## 迁移状态与后续工作
+
+当前范围内的核心迁移基本完成：Rust 文档处理与会话、一次性 Style 应用、TS 数据契约及渲染校验、图片处理链和 Canvas Engine 均已提供实现。后续工作是 GUI 接入、调用方的 PNG 文件保存及用户另行安排的测试验收；本声明不表示完整桌面应用或实际出图结果已经验收。
 
 | 能力 | 状态 |
 | --- | --- |
@@ -54,11 +56,11 @@ cargo clippy --manifest-path desktop/src-tauri/Cargo.toml --locked --lib -- -D w
 
 Rust 修改还需执行相关工程的格式检查。测试由用户另行安排。
 
-## 示例与资料
+## 示例与保留资料
 
 - `desktop/examples/grid.image.json`：当前结构的图片 JSON 示例；`module-style.json`：Style 资源示例。
-- [tool_test/](tool_test/README.md)：真实素材副本及历史验收资料，不作为当前 Engine 的验收输入或应用运行时依赖。
+- [tool_test/](tool_test/README.md)：仅保留原始图片素材副本及来源清单，供后续实图测试使用，不是应用运行时依赖。
 - `acceptance/`：历史内容来源；原始笔记不因文档整理而修改。
 - `image_create_tool/`：旧 Python 实现及其资源协议，不作为 Tauri 需求入口。
 
-后续输入和验收以当前需求及 Engine 接口为准。历史材料只用于追溯，不定义新架构或证明当前功能可用。
+迁移临时工程、旧协议图片 JSON、历史验收脚本与报告、演示出图及局部配置已清理。后续输入和验收以当前需求及 Engine 接口为准，不再使用旧迁移演示作为开发入口。

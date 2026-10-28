@@ -1,9 +1,7 @@
-# 第一版验收工作目录
+# 实图素材副本
 
-素材从 `C:/Users/31305/Documents/workspace/video-creator/wxq_anqila/assets/` 原样复制到本目录 `assets/`。原目录只读，不在原目录运行或改写生成脚本。
+本目录仅保留 `assets/` 中的原始 PNG 和 `素材来源.json`，供用户后续安排实图测试时使用；素材及来源清单保持原样，不是应用运行时依赖。
 
-先完成本应用，再由子 Agent 读取原目录的 `script.md` 笔记，在本目录编写唯一 `pjt.json`，使用新应用预览并导出到 `outputs/`。素材配置使用 `assets/`，默认输出配置使用 `outputs/`。
+原始攻略笔记完整保存在 [source-notes.md](../acceptance/source-notes.md)。迁移临时工程、旧协议图片 JSON、历史脚本与报告、生成图片、局部应用配置和锁文件已清理。
 
-旧项目已生成的三张图片只作参考，已复制到项目根部 `outputs/reference/`。新应用验收后，将本目录生成的图片复制到项目根部 `outputs/`，供用户比较。不得运行旧 `build_guides.py` 冒充新应用结果。
-
-当前 `assets/` 中的来源 JSON 是原始素材附带的只读记录，不是应用生成的第二份项目配置。
+当前图片及 Style 结构示例位于 [desktop/examples/](../desktop/examples/)，需求入口见[架构与需求基线](../docs/architecture.md)。后续测试另行准备符合现行协议的输入，不从旧验收方案推导新行为，不修改来源素材或用户全局配置。
