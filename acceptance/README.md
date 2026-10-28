@@ -1,4 +1,6 @@
-# 第一版图片验收
+# 历史验收内容来源
+
+> 本页保留旧 Python 验收时的素材与内容约定，不是当前任务或 Tauri 需求。下文的路径、输出计划和检查范围均属于该次历史验收；当前规则见[架构与需求基线](../docs/architecture.md)。
 
 来源工作目录：`C:/Users/31305/Documents/workspace/video-creator/wxq_anqila`。
 

@@ -1,38 +1,36 @@
-## Reference
+## 需求入口
 
-- 当前迁移目标与分支范围：@README.md
-- 旧 Python 产品行为（待废弃，仅作迁移参考）：@docs/template.md
-- 当前 Tauri 图片 JSON 协议：@docs/tauri-json.md
-- 旧 Python 图片 JSON 协议（迁移参考）：@image_create_tool/resources/JSON_PROTOCOL.md
-- 开发说明：@docs/dev.md
-- Tauri JSON 实现：@docs/tauri-dev.md
-- Style/模块资源数据定义与应用：@docs/tauri-style.md
-- TS 图片处理函数注册与调用：@docs/tauri-image-processors.md
-- 旧 Python 代码规范（待废弃，不适用于 Rust / TypeScript）：@docs/CODING_STANDARDS.md
+- 架构、职责和当前交付范围：@docs/architecture.md
+- 图片 JSON、文档会话和文件工作流：@docs/document.md
+- 渲染参数、默认值、布局、输出和诊断：@docs/rendering.md
+- 素材、字体、处理链和 Style / 模块资源：@docs/resources.md
+- 当前实现进度、开发和检查命令：@README.md
 
-## 当前开发方向
+先读架构，再按任务读取对应需求；不默认加载全部历史材料。
 
-- 后续开发围绕 `desktop/` 的 Tauri 架构进行，见 @docs/dev.md。
-- 本分支实现图片描述 JSON 的 Rust 处理及 `desktop/src/types/` 中的 TS 只读数据契约及 `desktop/src/image-tools/` 基础图片处理工具；TypeScript GUI 和 Web 图片合成器在后续任务迁移，预览与导出共用合成逻辑。
-- 下方 Python 说明仅供迁移核对，不作为新架构实现要求。
+## 开发范围与职责
 
-## 旧 Python 版本 v0.1.0（待废弃）
+- 新开发围绕 `desktop/` 的 Tauri 架构进行。Rust 管理权威文档和文件保护，TS 负责渲染业务校验、布局和 Web 图像合成，预览与导出共用逻辑。
+- 文件能读写不等于可以渲染；不要把渲染参数业务校验重新放进 Rust 文档读写流程。
+- 图片 JSON 是用户内容及显式配置；默认值、计算布局和渲染结果不回写源文档。Style 的主动应用遵循资源需求。
+- 需求文档不表示功能已完成。实现差异必须明确报告，不能静默修改需求来迁就代码。
+- `image_create_tool/`、`tmp/`、`tool_test/`、`acceptance/` 中的历史实现、演示和记录不是当前需求来源；仅在迁移或核对素材时按需读取。
+- 未明确要求时，不新增攻略结论、不改变用户推荐、不删减条件，保留完整 `sourceNotes`、实际图文和稳定 ID。
+- 素材只使用明确提供的本地引用，不搜索或猜测替代路径。验收使用工作区素材副本，不运行旧绘图脚本代替新应用验收，不改用户全局资源或配置。
 
-- Python 包 `image_create_tool`；GUI、服务和 Pillow 渲染器在同一进程的不同线程运行。
-- 使用工作区 `.venv/Scripts/python.exe -m image_create_tool` 启动 GUI，在界面中打开或新建图片 JSON、检查预览问题并导出 PNG。
-- 每张图片独立 JSON，GUI 不查找项目或固定 pjt.json；默认 PNG 与该 JSON 同名、同目录。
-- Agent 可在目录中组织多张图片 JSON；项目说明自行维护，应用不生成 AGENTS.md。
-- Style/Template 是全局 JSON 参数资源。应用 Style 一次性整体覆盖，遗漏属性恢复默认，实际图文内容和稳定 ID 保留；参数展开写入图片，之后不随全局文件变化。
-- Template 复制创建后独立。模块无父子样式继承；布局容器可不设视觉装饰。
-- 稳定 ID 必须保留。兼容读取旧 itemRow 时保留 `:text`、`:image` 子 ID。
-- 素材查询使用 GUI 的“替换/选择素材”；不手动猜绝对素材路径。
-- 未明确请求时不新增攻略结论、不改变用户推荐、不删减条件，保留完整 `sourceNotes`。
-- 修改后先检查 GUI 预览与问题提示、再导出。文字超限按模块边界裁剪，仅警告；缺素材、非法 crop、字体或处理脚本错误、布局越界仍阻止导出。
-- 验收使用 tool_test/ 中已复制的素材；旧图片仅作参考，不运行旧渲染脚本。
-- 机器全局配置位置可用 IMAGE_CREATE_TOOL_HOME 覆盖；验收时使用工作区内配置目录，避免改动用户全局资源。
+## 文档维护
 
-## Rules
+- 四份需求文档分别维护自己的规则；跨主题使用链接，不复制参数表或维护另一份默认值清单。
+- 文档写明职责、数据协议、可观察行为、默认值、错误处理和验收条件；不堆叠源码目录、函数清单、机器专用配置和历史检查日志。
+- 新增需求先明确行为和范围，再更新所属文档。未明确的产品选择不能伪装成已确认需求；常规实现方式由开发者在现有约束内选择。
+- README 只记录项目入口、实际进度、运行检查和示例位置；不要重新放入旧 Python 使用手册或分散的需求描述。
+- 文档变更检查链接、规则唯一性、冲突和遗漏；不为纯文档或格式调整新增测试。
 
-- TypeScript（含 Vue 中的 TS）采用 Prettier 统一格式：两空格缩进、双引号、分号；配置见 `desktop/.prettierrc.json`。`if` / `else`、`for`、`while`、`do` 的语句体必须使用大括号并换行，即使只有一条语句。禁止将 `if` 条件与执行语句写在同一行。
-- 修改 `desktop/` 的 TypeScript / Vue 后，运行 `npm run fix` 自动修复格式，并用 `npm run check` 检查 ESLint、Prettier、类型及构建。命令在 `desktop/` 下执行；不为纯格式调整新增测试。
+## 代码与检查
+
+- TypeScript（含 Vue 中的 TS）采用 `desktop/.prettierrc.json`：两空格缩进、双引号、分号。
+- `if` / `else`、`for`、`while`、`do` 的语句体必须使用大括号并换行，即使只有一条语句；禁止将 `if` 条件与执行语句写在同一行。
+- 修改 `desktop/` 的 TypeScript / Vue 后，在 `desktop/` 下运行 `npm run fix` 和 `npm run check`。
+- Rust 修改执行相关工程的格式、编译、Clippy 及现有适用检查；不把未执行的检查描述为通过。
 - 未经用户明确要求，不新增或修改测试代码。
+- 当前 Canvas Engine 开发阶段按用户要求不新增、修改或运行测试；测试由用户后续安排。格式、静态检查和构建仍须执行，不将其描述为渲染验收。

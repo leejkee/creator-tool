@@ -1,4 +1,8 @@
-当前协议：`image-create-tool-version: "v0.1.0"`。应用直接读取指定 JSON，不查找项目清单。
+# 旧 Python 图片协议 v0.1.0
+
+> 本页随旧 Python 资源保留，仅供历史数据核对，不约束 Tauri。新格式与需求从[架构与需求基线](../../docs/architecture.md)进入。
+
+该历史版本协议：`image-create-tool-version: "v0.1.0"`。旧应用直接读取指定 JSON，不查找项目清单。
 
 | 字段 | 说明 |
 | --- | --- |

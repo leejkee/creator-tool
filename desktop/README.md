@@ -1,7 +1,5 @@
-# Tauri + Vue + TypeScript
+# Tauri 桌面工程
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+项目入口、当前进度及运行检查命令见[根 README](../README.md)。
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+开发前阅读[架构与需求基线](../docs/architecture.md)，按任务查阅其中的需求明细，并遵循[开发约束](../AGENTS.md)。本目录不维护第二份架构、协议或需求说明。
