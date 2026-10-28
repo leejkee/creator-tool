@@ -1,5 +1,6 @@
 mod documents;
 mod fonts;
+mod render_assets;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -19,6 +20,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             fonts::list_local_font_families,
+            render_assets::read_render_asset,
+            render_assets::get_render_asset_version,
             documents::open_document,
             documents::create_document,
             documents::save_document_as,

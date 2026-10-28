@@ -251,6 +251,7 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
       const group = {
         id,
         type,
+        path,
         layout: layout ?? ([1, 1] as const),
         padding: integer(
           fields.padding,
@@ -293,7 +294,7 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
         validateContentBox(width, height, style, path, local);
       }
       if (text.trim().length > 0) {
-        slot.value = { id, type, width, height, text, style };
+        slot.value = { id, type, path, width, height, text, style };
       }
     } else if (type === "image") {
       const style = resolveModuleStyle(
@@ -308,6 +309,7 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
       slot.value = {
         id,
         type,
+        path,
         width,
         height,
         style,
@@ -328,7 +330,7 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
         `${path}.style`,
         local,
       );
-      slot.value = { id, type, width, height, style };
+      slot.value = { id, type, path, width, height, style };
     }
   }
   const root = rootSlots[0]?.value;

@@ -69,6 +69,8 @@ export interface RenderTextStyle extends RenderContentStyle {
 
 interface RenderModuleBase {
   readonly id: string;
+  /** Original location, retained when empty siblings are removed. */
+  readonly path: string;
   readonly style: RenderStyle;
 }
 
