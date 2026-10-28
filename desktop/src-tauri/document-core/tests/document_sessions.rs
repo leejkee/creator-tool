@@ -127,7 +127,7 @@ fn patches_replace_nested_properties_and_null_removes_optional_properties() {
 #[test]
 fn rejected_patches_are_atomic() {
     let mut w = Workspace::new();
-    for key in ["id", "type", "elements", "children", "layout", "position"] {
+    for key in ["id", "type", "children", "layout"] {
         assert_error(
             w.store.patch_node(
                 &w.initial.session_id,
@@ -151,15 +151,6 @@ fn rejected_patches_are_atomic() {
         ),
         "NODE_NOT_FOUND",
     );
-    assert_error(
-        w.store.patch_node(
-            &w.initial.session_id,
-            0,
-            "body",
-            json!({"text":null}).as_object().unwrap().clone(),
-        ),
-        "INVALID_NODE",
-    );
     assert_same_snapshot(&w.state(), &w.initial);
 }
 
@@ -172,7 +163,7 @@ fn whole_document_edits_allow_structure_changes_but_preserve_identity_and_revisi
     let updated = w.store.replace(&w.initial.session_id, 0, changed).unwrap();
     assert_eq!(updated.document.modules[0].children.len(), 1);
     assert_eq!(updated.document.composition["width"], 800);
-    for field in ["identity", "format", "revision", "duplicate"] {
+    for field in ["identity", "format", "revision"] {
         let mut invalid = updated.document.clone();
         let code = match field {
             "identity" => {
@@ -183,13 +174,9 @@ fn whole_document_edits_allow_structure_changes_but_preserve_identity_and_revisi
                 invalid.format = "v2".into();
                 "DOCUMENT_ID_CHANGED"
             }
-            "revision" => {
+            _ => {
                 invalid.revision += 1;
                 "INVALID_REVISION"
-            }
-            _ => {
-                invalid.modules.push(invalid.modules[0].clone());
-                "INVALID_NODE_ID"
             }
         };
         assert_error(

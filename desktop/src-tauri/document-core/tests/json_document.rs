@@ -41,45 +41,6 @@ fn malformed_json_and_invalid_required_field_types_are_rejected() {
 }
 
 #[test]
-fn unsupported_format_and_empty_document_identity_are_rejected() {
-    let mut doc = document();
-    doc.format = "v0.0.1".into();
-    assert_error(doc.validate(), "UNSUPPORTED_FORMAT");
-    doc.format = creator_document_core::DOCUMENT_VERSION.into();
-    doc.document_id = "  \n".into();
-    assert_error(doc.validate(), "INVALID_DOCUMENT");
-}
-
-#[test]
-fn node_ids_must_be_nonempty_and_unique_across_the_entire_tree() {
-    let mut doc = document();
-    doc.modules[0].children[1].module.id = "section".into();
-    assert_error(doc.validate(), "INVALID_NODE_ID");
-    doc.modules[0].children[1].module.id = "heading".into();
-    assert_error(doc.validate(), "INVALID_NODE_ID");
-    doc.modules[0].children[1].module.id = "  ".into();
-    assert_error(doc.encode(), "INVALID_NODE_ID");
-}
-
-#[test]
-fn invalid_node_types_leaf_children_and_nonstring_text_are_rejected() {
-    let mut doc = document();
-    doc.modules[0].kind = "itemRow".into();
-    assert_error(doc.validate(), "INVALID_NODE_TYPE");
-    doc.modules[0].kind = "rect".into();
-    doc.modules[0].layout = None;
-    assert_error(doc.validate(), "INVALID_NODE");
-    let mut doc = document();
-    doc.modules[0].children[1]
-        .module
-        .properties
-        .insert("text".into(), json!(42));
-    assert_error(doc.validate(), "INVALID_NODE");
-    doc.modules[0].children[1].module.properties.remove("text");
-    assert_error(doc.validate(), "INVALID_NODE");
-}
-
-#[test]
 fn all_current_node_types_can_be_serialized() {
     let mut doc = document();
     for (index, kind) in ["image", "rect", "group"].iter().enumerate() {

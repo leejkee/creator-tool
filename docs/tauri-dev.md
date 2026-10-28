@@ -105,7 +105,7 @@ cargo check --locked
 cargo clippy --locked -- -D warnings
 cargo fmt --manifest-path document-core/Cargo.toml --check
 cargo check --manifest-path document-core/Cargo.toml --locked
-cargo test --manifest-path document-core/Cargo.toml --locked --test document_lifecycle --test document_sessions -- --skip rejected_patches_are_atomic --skip whole_document_edits_allow_structure_changes_but_preserve_identity_and_revision_ownership
+cargo test --manifest-path document-core/Cargo.toml --locked
 cargo clippy --manifest-path document-core/Cargo.toml --locked -- -D warnings
 ```
 
@@ -123,27 +123,27 @@ export PKG_CONFIG_PATH=/workspace/tauri-sysroot/root/usr/lib/x86_64-linux-gnu/pk
 
 ## creator-document-core 自动化测试
 
-移除业务校验前共有 68 个集成测试（JSON 7 个、会话及文件同步 18 个、新建及另存为 12 个、校验规则 16 个、网格放置 15 个）。2026-10-26 未新增或修改测试代码；旧校验相关测试仍引用已删除的 validation 模块或 validate 方法，全量测试暂不能编译，会话测试中也有依赖已移除规则的断言。当前运行与 I/O 目标一致的 28 项测试通过：document_lifecycle 全部 12 项，document_sessions 中 16 项，过滤以下两项包含业务校验断言的测试。
+当前保留 43 个集成测试，全部通过，无失败、忽略或过滤项。清理了已删除业务校验的测试及混合测试中的过期断言；不再引用 validation 模块、ImageDocument::validate、issues 报告或已移除的业务错误码。生产源码保持不变。
 
-- rejected_patches_are_atomic
-- whole_document_edits_allow_structure_changes_but_preserve_identity_and_revision_ownership
+测试位于 `desktop/src-tauri/document-core/tests/`，仅依赖 Rust 核心和开发依赖 tempfile，无需 Tauri、WebView 或 Python。
 
-测试位于 `desktop/src-tauri/document-core/tests/`，仅依赖 Rust 核心和开发依赖 tempfile，无需 Tauri、WebView 或 Python。以下分类是旧测试覆盖范围，不代表旧业务规则仍然启用。
+| 文件 | 数量 | 当前覆盖范围 |
+| --- | --- | --- |
+| json_document.rs | 4 | 中文和未知字段往返、UTF-8 BOM、JSON 语法与 Serde 字段类型转换、模块序列化 |
+| document_sessions.rs | 18 | 会话复用与隔离、内存编辑与显式保存、补丁语义、失败状态保留、并发版本、文档身份与 revision 归属、版本溢出、外部文件变化、重载与关闭保护 |
+| document_lifecycle.rs | 12 | 新建目录与 JSON、并列新建、模板复制与路径重定位、命名和目录要求、另存为、防覆盖及冲突处理 |
+| grid_placement.rs | 9 | 放置记录往返与元数据保留、Serde 二元组/u32 转换、节点查找、直接子节点关系、坐标更新、版本及磁盘状态、无操作提交与文档示例 |
 
-- `grid_placement.rs`：二元组、空位、嵌套、放置记录往返、越界/占位、布局调整、位置更新、示例及旧格式拒绝。
-- `json_document.rs`：中文与未知字段往返、UTF-8 BOM、非法 JSON/字段类型、协议版本、文档身份、节点 ID、节点类型及叶子节点约束。
-- `document_sessions.rs`：会话复用与隔离、显式保存、无操作提交、补丁语义、拒绝操作的状态完整性、并发版本、revision 溢出、外部候选、格式变化、丢失与不可读文件、基线恢复、重载及关闭保护。
-- `document_lifecycle.rs`：新建目录及 JSON、并列创建、模板资源重定位、同名拒绝覆盖、另存为会话切换及冲突保护。
-- 文件操作使用独立临时目录，通过显式 check/poll 驱动状态，不依赖固定 sleep；不会改写真实素材或示例。
+Serde 的字段类型和可表示性要求继续保留，例如 u32 范围、二元组长度和必填的放置记录字段。测试不再要求 Rust 拒绝零网格尺寸、重复 ID、越界、重复占位、叶节点关系或样式业务参数。文件名规则、版本、文档身份和未保存状态属于 I/O 与会话保护，仍保留对应断言。
 
-从仓库根目录运行：
+文件操作使用独立临时目录，通过显式 check/poll 驱动状态，不依赖固定 sleep，不改写真实素材或示例。全量运行无需跳过任何测试：
 
 ```sh
-cargo test --manifest-path desktop/src-tauri/document-core/Cargo.toml --locked --test document_lifecycle --test document_sessions -- --skip rejected_patches_are_atomic --skip whole_document_edits_allow_structure_changes_but_preserve_identity_and_revision_ownership
-cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --lib --locked -- -D warnings
+cargo test --manifest-path desktop/src-tauri/document-core/Cargo.toml --locked
+cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --all-targets --locked -- -D warnings
 ```
 
-这些测试验证核心公开接口，不覆盖 Tauri 后台轮询调度、WebView 命令调用、平台原生文件锁或跨进程原子比较并交换。上述 28 项已在当前 Windows 环境执行。
+上述检查已在本次 Linux 环境通过。测试验证核心公开接口，不覆盖 Tauri 后台轮询调度、WebView 命令调用、平台原生文件锁或跨进程原子比较并交换。
 
 ## 新建模块与另存为
 
@@ -161,7 +161,7 @@ cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --lib --
 
 模块名和文件名禁止空白名称、路径分隔符、控制字符及常见 Windows 非法/保留名称。新建和另存为仅使用 create_new 写入不存在的目标；普通保存的原子替换逻辑不变。初次创建失败会尝试移除本次创建的空目录，不递归清理。
 
-本次新增 12 个生命周期测试，总计 37 个核心集成测试，覆盖未选择目录、并列新建、重新打开、目录冲突、模板复制与资源重定位、非法模板、显式目录优先、另存为命名/冲突/版本保护及外部冲突下保留本地副本。
+保留的 12 个生命周期测试覆盖未选择目录、并列新建、重新打开、目录冲突、模板复制与资源重定位、非法模板、显式目录优先、另存为命名/冲突/版本保护及外部冲突下保留本地副本。
 
 ## 当前解析与 I/O 边界
 
@@ -177,7 +177,7 @@ ImageDocument::parse 去除 UTF-8 BOM 后直接反序列化；from_value 直接�
 
 set_group_layout 和 set_module_position 分别写入 layout 及直接子模块的放置坐标。不再检查零尺寸、节点类型、越界或重复占位；仍要求能够找到节点及被操作的直接子模块。跨组移动和多位置交换暂使用 replace_document。实际像素布局由后续 TS 合成器处理。
 
-旧网格测试含已删除业务规则的断言，当前未修改，不能作为现行校验行为依据。
+网格测试已清理旧业务规则断言，保留数据往返、Serde 结构转换、节点定位和编辑状态等覆盖，不再检查重复占位、越界或模块类型限制。
 
 ## TypeScript 只读数据类型
 
