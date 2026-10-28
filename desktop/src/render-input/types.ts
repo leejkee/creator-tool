@@ -1,5 +1,10 @@
 import type {
-  GridLayout, GridPosition, HorizontalAlign, ImageFit, ImageProcessor, VerticalAlign,
+  GridLayout,
+  GridPosition,
+  HorizontalAlign,
+  ImageFit,
+  ImageProcessor,
+  VerticalAlign,
 } from "../types";
 
 export type RenderIssueCode =
@@ -104,7 +109,8 @@ export interface RenderGroupModule extends RenderModuleBase {
   readonly children: readonly RenderPlacedModule[];
 }
 
-export type RenderModule = RenderTextModule | RenderImageModule | RenderRectModule | RenderGroupModule;
+export type RenderModule =
+  RenderTextModule | RenderImageModule | RenderRectModule | RenderGroupModule;
 
 export interface DocumentRenderInput {
   readonly composition: {
@@ -116,5 +122,13 @@ export interface DocumentRenderInput {
 }
 
 export type RenderValidationResult =
-  | { readonly ok: true; readonly input: DocumentRenderInput; readonly warnings: readonly RenderIssue[] }
-  | { readonly ok: false; readonly errors: readonly RenderIssue[]; readonly warnings: readonly RenderIssue[] };
+  | {
+      readonly ok: true;
+      readonly input: DocumentRenderInput;
+      readonly warnings: readonly RenderIssue[];
+    }
+  | {
+      readonly ok: false;
+      readonly errors: readonly RenderIssue[];
+      readonly warnings: readonly RenderIssue[];
+    };

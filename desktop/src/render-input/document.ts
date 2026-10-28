@@ -4,23 +4,53 @@ import { IMAGE_RENDER_DEFAULTS, resolveImageFit } from "./image";
 import { resolveProcessors } from "./processors";
 import { imagePath, resolveModuleStyle, validateContentBox } from "./style";
 import type {
-  RenderGroupModule, RenderModule, RenderValidationResult,
+  RenderGroupModule,
+  RenderModule,
+  RenderValidationResult,
 } from "./types";
 import {
-  array, attempt, enumeration, error, integer, object, string, unknownFields, unsupportedFields,
+  array,
+  attempt,
+  enumeration,
+  error,
+  integer,
+  object,
+  string,
+  unknownFields,
+  unsupportedFields,
 } from "./validation";
 import type { Fields, ValidationContext } from "./validation";
 
 const LEGACY_ASSETS = ["assetId", "assetQuery", "assetsDir", "assetAliases"];
 const UNSUPPORTED_MODULE_FIELDS = [
-  "elements", "position", "span", "processor", "contentScale", "offsetX", "offsetY", "z", "zIndex", "rowGap", "columnGap",
+  "elements",
+  "position",
+  "span",
+  "processor",
+  "contentScale",
+  "offsetX",
+  "offsetY",
+  "z",
+  "zIndex",
+  "rowGap",
+  "columnGap",
 ];
 const MODULE_TYPES = ["text", "image", "rect", "group"] as const;
 
-interface Slot { value?: RenderModule }
-interface ChildSlot { readonly position: GridPosition; readonly slot: Slot }
+interface Slot {
+  value?: RenderModule;
+}
+interface ChildSlot {
+  readonly position: GridPosition;
+  readonly slot: Slot;
+}
 type Frame =
-  | { readonly kind: "visit"; readonly raw: unknown; readonly path: string; readonly slot: Slot }
+  | {
+      readonly kind: "visit";
+      readonly raw: unknown;
+      readonly path: string;
+      readonly slot: Slot;
+    }
   | {
       readonly kind: "finish";
       readonly raw: Fields;
@@ -29,23 +59,41 @@ type Frame =
       readonly slot: Slot;
     };
 
-function gridPair(value: unknown, path: string, ctx: ValidationContext, minimum: number): GridPosition | undefined {
+function gridPair(
+  value: unknown,
+  path: string,
+  ctx: ValidationContext,
+  minimum: number,
+): GridPosition | undefined {
   const before = ctx.errors.length;
   const pair = array(value, path, ctx);
-  if (pair.length !== 2) error(ctx, path, "必须是恰好包含两个整数的二元组");
+  if (pair.length !== 2) {
+    error(ctx, path, "必须是恰好包含两个整数的二元组");
+  }
   const first = integer(pair[0], `${path}[0]`, ctx, minimum);
   const second = integer(pair[1], `${path}[1]`, ctx, minimum);
-  if (first > 0xffffffff || second > 0xffffffff) error(ctx, path, "网格数值不能超过 u32 范围");
+  if (first > 0xffffffff || second > 0xffffffff) {
+    error(ctx, path, "网格数值不能超过 u32 范围");
+  }
   return before === ctx.errors.length ? [first, second] : undefined;
 }
 
-function outputSize(value: unknown, path: string, ctx: ValidationContext): number | "auto" {
-  if (value === undefined || value === "auto") return D.outputSize;
+function outputSize(
+  value: unknown,
+  path: string,
+  ctx: ValidationContext,
+): number | "auto" {
+  if (value === undefined || value === "auto") {
+    return D.outputSize;
+  }
   return integer(value, path, ctx, 1);
 }
 
 function children(
-  fields: Fields, layout: GridPosition | undefined, path: string, ctx: ValidationContext,
+  fields: Fields,
+  layout: GridPosition | undefined,
+  path: string,
+  ctx: ValidationContext,
 ): { slots: ChildSlot[]; visits: Frame[] } {
   const records = array(fields.children, `${path}.children`, ctx, true);
   const slots: ChildSlot[] = [];
@@ -54,20 +102,44 @@ function children(
   for (let i = 0; i < records.length; i++) {
     const recordPath = `${path}.children[${i}]`;
     const placed = object(records[i], recordPath, ctx);
-    if (!placed) continue;
+    if (!placed) {
+      continue;
+    }
     unsupportedFields(placed, ["span"], recordPath, ctx);
-    const position = gridPair(placed.position, `${recordPath}.position`, ctx, 0);
+    const position = gridPair(
+      placed.position,
+      `${recordPath}.position`,
+      ctx,
+      0,
+    );
     if (position) {
       const key = `${position[0]},${position[1]}`;
-      if (occupied.has(key)) error(ctx, `${recordPath}.position`, "同一容器内不能重复占用单元格", "DUPLICATE_POSITION");
+      if (occupied.has(key)) {
+        error(
+          ctx,
+          `${recordPath}.position`,
+          "同一容器内不能重复占用单元格",
+          "DUPLICATE_POSITION",
+        );
+      }
       occupied.add(key);
       if (layout && (position[0] >= layout[0] || position[1] >= layout[1])) {
-        error(ctx, `${recordPath}.position`, "放置坐标超出父容器 layout 范围", "POSITION_OUT_OF_BOUNDS");
+        error(
+          ctx,
+          `${recordPath}.position`,
+          "放置坐标超出父容器 layout 范围",
+          "POSITION_OUT_OF_BOUNDS",
+        );
       }
     }
     const slot: Slot = {};
     slots.push({ position: position ?? [0, 0], slot });
-    visits.push({ kind: "visit", raw: placed.module, path: `${recordPath}.module`, slot });
+    visits.push({
+      kind: "visit",
+      raw: placed.module,
+      path: `${recordPath}.module`,
+      slot,
+    });
   }
   return { slots, visits };
 }
@@ -76,8 +148,15 @@ function children(
 export function validateRenderDocument(value: unknown): RenderValidationResult {
   const ctx: ValidationContext = { errors: [], warnings: [] };
   const doc = object(value, "$", ctx);
-  if (!doc) return { ok: false, errors: ctx.errors, warnings: ctx.warnings };
-  enumeration(doc["image-create-tool-version"], '$["image-create-tool-version"]', ctx, ["v0.2.0"]);
+  if (!doc) {
+    return { ok: false, errors: ctx.errors, warnings: ctx.warnings };
+  }
+  enumeration(
+    doc["image-create-tool-version"],
+    '$["image-create-tool-version"]',
+    ctx,
+    ["v0.2.0"],
+  );
   string(doc.documentId, "$.documentId", ctx);
   integer(doc.revision, "$.revision", ctx, 0);
   unsupportedFields(doc, LEGACY_ASSETS, "$", ctx);
@@ -88,11 +167,18 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
     height: outputSize(composition.height, "$.composition.height", ctx),
   };
   const roots = array(doc.modules, "$.modules", ctx);
-  if (roots.length !== 1) error(ctx, "$.modules", "可渲染文档必须且只能包含一个根模块");
+  if (roots.length !== 1) {
+    error(ctx, "$.modules", "可渲染文档必须且只能包含一个根模块");
+  }
   const rootSlots: Slot[] = roots.map(() => ({}));
   const stack: Frame[] = [];
   for (let i = roots.length - 1; i >= 0; i--) {
-    stack.push({ kind: "visit", raw: roots[i], path: `$.modules[${i}]`, slot: rootSlots[i] });
+    stack.push({
+      kind: "visit",
+      raw: roots[i],
+      path: `$.modules[${i}]`,
+      slot: rootSlots[i],
+    });
   }
   const ids = new Set<string>();
   const active = new WeakSet<object>();
@@ -100,45 +186,93 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
     const frame = stack.pop()!;
     if (frame.kind === "finish") {
       active.delete(frame.raw);
-      const nonempty = frame.children.flatMap(({ position, slot }) => slot.value ? [{ position, module: slot.value }] : []);
-      if (nonempty.length > 0) frame.slot.value = { ...frame.group, children: nonempty };
+      const nonempty = frame.children.flatMap(({ position, slot }) =>
+        slot.value ? [{ position, module: slot.value }] : [],
+      );
+      if (nonempty.length > 0) {
+        frame.slot.value = { ...frame.group, children: nonempty };
+      }
       continue;
     }
     const { path, slot } = frame;
     const fields = object(frame.raw, path, ctx);
-    if (!fields) continue;
+    if (!fields) {
+      continue;
+    }
     const id = string(fields.id, `${path}.id`, ctx);
-    const local: ValidationContext = { ...ctx, ...(id === "" ? {} : { moduleId: id }) };
+    const local: ValidationContext = {
+      ...ctx,
+      ...(id === "" ? {} : { moduleId: id }),
+    };
     if (active.has(fields)) {
       error(local, path, "模块不能循环引用父模块", "INVALID_STRUCTURE");
       continue;
     }
-    if (id !== "" && ids.has(id)) error(local, `${path}.id`, "模块 ID 在文档内必须唯一", "DUPLICATE_MODULE_ID");
-    if (id !== "") ids.add(id);
-    const type: ModuleType = enumeration(fields.type, `${path}.type`, local, MODULE_TYPES);
-    if (!MODULE_TYPES.some(candidate => candidate === fields.type)) continue;
-    unsupportedFields(fields, [...LEGACY_ASSETS, ...UNSUPPORTED_MODULE_FIELDS], path, local);
+    if (id !== "" && ids.has(id)) {
+      error(
+        local,
+        `${path}.id`,
+        "模块 ID 在文档内必须唯一",
+        "DUPLICATE_MODULE_ID",
+      );
+    }
+    if (id !== "") {
+      ids.add(id);
+    }
+    const type: ModuleType = enumeration(
+      fields.type,
+      `${path}.type`,
+      local,
+      MODULE_TYPES,
+    );
+    if (!MODULE_TYPES.some((candidate) => candidate === fields.type)) {
+      continue;
+    }
+    unsupportedFields(
+      fields,
+      [...LEGACY_ASSETS, ...UNSUPPORTED_MODULE_FIELDS],
+      path,
+      local,
+    );
     if (type !== "image") {
       unsupportedFields(fields, ["assetPath", "fit"], path, local);
-      const calls = resolveProcessors(fields.processors, `${path}.processors`, local);
-      if (calls.length > 0) error(local, `${path}.processors`, "只有图片模块支持处理链");
+      const calls = resolveProcessors(
+        fields.processors,
+        `${path}.processors`,
+        local,
+      );
+      if (calls.length > 0) {
+        error(local, `${path}.processors`, "只有图片模块支持处理链");
+      }
     }
     if (type === "group") {
       unsupportedFields(fields, ["width", "height"], path, local);
       const layout = gridPair(fields.layout, `${path}.layout`, local, 1);
       const group = {
-        id, type, layout: layout ?? [1, 1] as const,
-        padding: integer(fields.padding, `${path}.padding`, local, 0, D.groupPadding),
+        id,
+        type,
+        layout: layout ?? ([1, 1] as const),
+        padding: integer(
+          fields.padding,
+          `${path}.padding`,
+          local,
+          0,
+          D.groupPadding,
+        ),
         gap: integer(fields.gap, `${path}.gap`, local, 0, D.groupGap),
         style: resolveModuleStyle(fields.style, type, `${path}.style`, local),
       };
       const { slots, visits } = children(fields, layout, path, local);
       active.add(fields);
       stack.push({ kind: "finish", raw: fields, group, children: slots, slot });
-      for (let i = visits.length - 1; i >= 0; i--) stack.push(visits[i]);
+      for (let i = visits.length - 1; i >= 0; i--) {
+        stack.push(visits[i]);
+      }
       continue;
     }
-    if (fields.layout !== undefined) error(local, `${path}.layout`, "叶子模块不能配置 layout");
+    if (fields.layout !== undefined) {
+      error(local, `${path}.layout`, "叶子模块不能配置 layout");
+    }
     if (array(fields.children, `${path}.children`, local, true).length > 0) {
       error(local, `${path}.children`, "叶子模块不能包含子模块");
     }
@@ -149,20 +283,51 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
     const validSize = beforeSize === ctx.errors.length;
     if (type === "text") {
       const text = string(fields.text, `${path}.text`, local, true);
-      const style = resolveModuleStyle(fields.style, type, `${path}.style`, local);
-      if (validSize) validateContentBox(width, height, style, path, local);
-      if (text.trim().length > 0) slot.value = { id, type, width, height, text, style };
+      const style = resolveModuleStyle(
+        fields.style,
+        type,
+        `${path}.style`,
+        local,
+      );
+      if (validSize) {
+        validateContentBox(width, height, style, path, local);
+      }
+      if (text.trim().length > 0) {
+        slot.value = { id, type, width, height, text, style };
+      }
     } else if (type === "image") {
-      const style = resolveModuleStyle(fields.style, type, `${path}.style`, local);
-      if (validSize) validateContentBox(width, height, style, path, local);
+      const style = resolveModuleStyle(
+        fields.style,
+        type,
+        `${path}.style`,
+        local,
+      );
+      if (validSize) {
+        validateContentBox(width, height, style, path, local);
+      }
       slot.value = {
-        id, type, width, height, style,
+        id,
+        type,
+        width,
+        height,
+        style,
         assetPath: imagePath(fields.assetPath, `${path}.assetPath`, local),
-        fit: attempt(local, `${path}.fit`, () => resolveImageFit(fields.fit)) ?? IMAGE_RENDER_DEFAULTS.fit,
-        processors: resolveProcessors(fields.processors, `${path}.processors`, local),
+        fit:
+          attempt(local, `${path}.fit`, () => resolveImageFit(fields.fit)) ??
+          IMAGE_RENDER_DEFAULTS.fit,
+        processors: resolveProcessors(
+          fields.processors,
+          `${path}.processors`,
+          local,
+        ),
       };
     } else {
-      const style = resolveModuleStyle(fields.style, type, `${path}.style`, local);
+      const style = resolveModuleStyle(
+        fields.style,
+        type,
+        `${path}.style`,
+        local,
+      );
       slot.value = { id, type, width, height, style };
     }
   }
@@ -170,6 +335,12 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
   if (ctx.errors.length === 0 && !root) {
     error(ctx, "$.modules[0]", "无可渲染内容", "NO_RENDERABLE_CONTENT");
   }
-  if (ctx.errors.length > 0 || !root) return { ok: false, errors: ctx.errors, warnings: ctx.warnings };
-  return { ok: true, input: { composition: output, root }, warnings: ctx.warnings };
+  if (ctx.errors.length > 0 || !root) {
+    return { ok: false, errors: ctx.errors, warnings: ctx.warnings };
+  }
+  return {
+    ok: true,
+    input: { composition: output, root },
+    warnings: ctx.warnings,
+  };
 }

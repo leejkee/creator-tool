@@ -1,9 +1,6 @@
 /** Decoded raster sources accepted by Canvas drawImage; no loading or file I/O. */
 export type ImageSource =
-  | HTMLImageElement
-  | HTMLCanvasElement
-  | ImageBitmap
-  | OffscreenCanvas;
+  HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas;
 
 export interface CropRectangle {
   /** Source-image coordinates. Fractional offsets are supported. */

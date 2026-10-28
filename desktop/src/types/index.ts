@@ -1,4 +1,9 @@
-export type { ExtensionFields, JsonObject, JsonPrimitive, JsonValue } from "./json";
+export type {
+  ExtensionFields,
+  JsonObject,
+  JsonPrimitive,
+  JsonValue,
+} from "./json";
 export type {
   DocumentVersion,
   GridLayout,
@@ -13,7 +18,11 @@ export type {
   RectModule,
   TextModule,
 } from "./document";
-export type { DocumentEventMap, DocumentSnapshot, ExternalChange } from "./session";
+export type {
+  DocumentEventMap,
+  DocumentSnapshot,
+  ExternalChange,
+} from "./session";
 export type { DocumentError } from "./errors";
 export type { ModuleResource, ResourceKind, StyleNode } from "./style";
 export type { ImageProcessor } from "./processors";

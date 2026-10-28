@@ -33,4 +33,6 @@
 
 ## Rules
 
+- TypeScript（含 Vue 中的 TS）采用 Prettier 统一格式：两空格缩进、双引号、分号；配置见 `desktop/.prettierrc.json`。`if` / `else`、`for`、`while`、`do` 的语句体必须使用大括号并换行，即使只有一条语句。禁止将 `if` 条件与执行语句写在同一行。
+- 修改 `desktop/` 的 TypeScript / Vue 后，运行 `npm run fix` 自动修复格式，并用 `npm run check` 检查 ESLint、Prettier、类型及构建。命令在 `desktop/` 下执行；不为纯格式调整新增测试。
 - 未经用户明确要求，不新增或修改测试代码。

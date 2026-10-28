@@ -1,9 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type {
-  DocumentSnapshot,
-  ModuleNode,
-  StyleNode,
-} from "../types";
+import type { DocumentSnapshot, ModuleNode, StyleNode } from "../types";
 
 /** Returns a new module without business validation; does not commit or save it. */
 export function applyStyle(
@@ -21,7 +17,9 @@ export function applyDocumentStyle(
   style: StyleNode,
 ): Promise<DocumentSnapshot> {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0) {
-    return Promise.reject(new RangeError("expectedVersion must be a nonnegative safe integer"));
+    return Promise.reject(
+      new RangeError("expectedVersion must be a nonnegative safe integer"),
+    );
   }
   return invoke<DocumentSnapshot>("apply_document_style", {
     sessionId,

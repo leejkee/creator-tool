@@ -1,6 +1,11 @@
 import type { ExtensionFields, JsonObject } from "./json";
 import type { ImageProcessor } from "./processors";
-import type { ContentStyle, ImageFit, ModuleStyle, TextStyle } from "./appearance";
+import type {
+  ContentStyle,
+  ImageFit,
+  ModuleStyle,
+  TextStyle,
+} from "./appearance";
 
 export type { ImageFit } from "./appearance";
 

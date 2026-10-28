@@ -6,7 +6,10 @@ export type ImageProcessorFunction = (
   ...args: readonly JsonValue[]
 ) => ImageSource | Promise<ImageSource>;
 
-export type ProcessorRegistration = readonly [functionId: string, handler: ImageProcessorFunction];
+export type ProcessorRegistration = readonly [
+  functionId: string,
+  handler: ImageProcessorFunction,
+];
 
 /** Construct once from trusted TS imports; resolving never changes the registry. */
 export interface ProcessorRegistry {

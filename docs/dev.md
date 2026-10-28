@@ -38,6 +38,20 @@
 
 ## TypeScript 数据契约
 
+### 代码风格与自动检查
+
+TypeScript 与 Vue 使用 Prettier 的主流格式：两空格缩进、双引号、分号、80 列目标宽度及 LF 换行。配置位于 `desktop/.prettierrc.json`。ESLint 强制控制语句使用大括号，每行最多一条语句；即使条件体只有一条语句，也要换行书写：
+
+```ts
+if (condition) {
+  execute();
+}
+```
+
+在 `desktop/` 下运行 `npm run fix` 自动补齐大括号并格式化，运行 `npm run check` 检查 ESLint、Prettier、TypeScript 类型及 Vite 构建。检查范围为 `src/`（含 Vue）和 `vite.config.ts`；格式检查另包含工具配置文件。`tmp/` 中的历史示例不在自动检查范围内，后续修改时同样遵循上述风格。
+
+GitHub Actions 的 `TypeScript checks` 工作流在相关推送和 PR 中执行 `npm ci` 与 `npm run check`，也支持手动触发。需要强制禁止不通过检查的 PR 合并时，可在 GitHub 分支保护中将该检查设置为必需。
+
 入口为 `desktop/src/types/index.ts`，使用纯 type/interface 对应 Rust 的 IPC 数据，不持有会话、不执行解析或文件 I/O。详细对应与限制见 [Tauri 开发文档](tauri-dev.md#typescript-只读数据类型)。
 
 ## TypeScript 图片处理

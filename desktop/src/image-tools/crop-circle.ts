@@ -5,7 +5,10 @@ import type { CropCircle, ImageSource } from "./types";
  * Crop a circle at the specified source-image center, preserving transparency outside it.
  * Fractional radii are accepted; the square output side is ceil(2 × radius).
  */
-export function cropCircle(source: ImageSource, circle: CropCircle): HTMLCanvasElement {
+export function cropCircle(
+  source: ImageSource,
+  circle: CropCircle,
+): HTMLCanvasElement {
   const size = sourceSize(source);
   requireCircleWithinSource(circle, size);
   const { centerX, centerY, radius } = circle;

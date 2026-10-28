@@ -1,4 +1,9 @@
-import type { GridLayout, ModuleNode, ModuleType, PlacedModule } from "./document";
+import type {
+  GridLayout,
+  ModuleNode,
+  ModuleType,
+  PlacedModule,
+} from "./document";
 import type { ExtensionFields, JsonObject } from "./json";
 import type { ImageProcessor } from "./processors";
 
