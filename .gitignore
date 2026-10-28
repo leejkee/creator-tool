@@ -9,4 +9,5 @@ cache/
 build/
 dist/
 /tmp/
+test/
 
