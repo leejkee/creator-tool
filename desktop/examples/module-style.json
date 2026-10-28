@@ -4,7 +4,7 @@
     "type": "group",
     "layout": [2, 1],
     "gap": 12,
-    "style": {"background": "#20212A", "radius": 12},
+    "style": {"background": {"type": "color", "color": "#20212A"}, "radius": 12},
     "children": [
       {
         "position": [0, 0],
@@ -19,6 +19,8 @@
         "position": [1, 0],
         "module": {
           "type": "text",
+          "width": 320,
+          "height": 64,
           "style": {"fontSize": 28, "color": "#FFFFFF", "align": "center"}
         }
       }

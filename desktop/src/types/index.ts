@@ -17,3 +17,12 @@ export type { DocumentEventMap, DocumentSnapshot, ExternalChange } from "./sessi
 export type { DocumentError } from "./errors";
 export type { ModuleResource, ResourceKind, StyleNode } from "./style";
 export type { ImageProcessor } from "./processors";
+export type {
+  BackgroundStyle,
+  BorderStyle,
+  ContentStyle,
+  HorizontalAlign,
+  ModuleStyle,
+  TextStyle,
+  VerticalAlign,
+} from "./appearance";

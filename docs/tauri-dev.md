@@ -1,5 +1,7 @@
 # Tauri JSON 文档开发
 
+TS 已实现统一渲染参数校验与默认值入口 `validateRenderDocument`，确认的尺寸、间距、自适应输出与警告规则见 [TS 渲染参数校验与布局规则](tauri-render-validation.md)。实际布局计算、资源加载与 PNG 出图仍待渲染 Engine 实现。
+
 应用层已提供 Rust 本地字体枚举、TS 调用入口及系统默认字体解析，见 [本地字体与系统默认字体](tauri-fonts.md)。
 
 ## 职责与范围
@@ -86,7 +88,7 @@ processors 补丁接受完整调用数组列表，更新 Node 的强类型字段
 ## 当前限制
 
 - 暂不提供自动保存、强制覆盖、历史或合并命令。新建/另存为不覆盖已有目录或文件；界面目录和文件选择器尚未接入。
-- 已删除业务校验；能够完成 I/O 不代表符合渲染协议或能够渲染。布局、样式、素材、字体与处理器语义后续再设计，也不执行 Python 预处理器。
+- Rust 已删除业务校验；能够完成 I/O 不代表符合渲染协议或能够渲染。TS 已实现渲染参数校验与默认值，布局、样式、素材及字体的已确认规则见 [渲染参数校验与布局规则](tauri-render-validation.md)；实际布局、资源加载和绘制仍待 Engine 实现。不执行 Python 预处理器。
 - 轮询读取文件内容，有 I/O 成本；单个 store 串行处理会话，适用于当前本地编辑场景。尚未实现大文件限制、跨进程会话互斥及崩溃后的会话恢复。
 - 临时文件替换保证正常文件系统下目标文件不会出现半写内容，不保证断电后目录元数据持久化；崩溃可能遗留 `.creator-document-*.tmp`。不自动清理其他进程的临时文件。
 - 当前不保留原始 JSON 排版和键顺序，保留的是文档内容及未迁移字段。
@@ -159,7 +161,7 @@ cargo clippy --manifest-path desktop/src-tauri/document-core/Cargo.toml --all-ta
 
 另存为必须由前端要求用户选择 targetDirectory 并填写 fileName；后端要求目录已存在，不自动创建同名子目录，未提供 .json 后缀时补齐。目标文件已存在时拒绝，包括当前源文件；原路径保存应使用 save_document。成功后保留 sessionId、增加会话 version、生成新文档身份并从 revision=0 开始，将会话切换至新文件，清除 dirty 和外部候选。失败保留原会话和文件。未修改的源文件仍保留；如源文件有外部冲突，可将当前内存版本另存至新文件。
 
-模板复制和另存为会将原目录相对的 assetsDir、字体、节点 assetPath、style.font 和背景 assetPath 转为明确绝对路径，以保持现有资源引用；assetId/assetQuery 保留并继续相对原 assetsDir 解释。不会复制素材、展开样式、执行处理脚本或改写任意扩展字段、处理器参数及 sourceNotes。绝对路径不会使文档自动成为可移植资源包。
+模板复制和另存为会将原目录相对的 assetsDir、字体、节点 assetPath、style.font 和背景 assetPath 转为明确绝对路径，以保持现有资源引用。对旧数据的 assetId/assetQuery 原样保留，并重定位 assetsDir 以保留旧引用关系；这一兼容处理不表示新 TS 渲染层支持旧素材 ID、查询或别名解析。新渲染方案只消费用户准备好的本地文件，统一使用 assetPath，见 [本地素材引用](tauri-render-validation.md#本地素材引用)。不会复制素材、展开样式、执行处理脚本或改写任意扩展字段、处理器参数及 sourceNotes。绝对路径不会使文档自动成为可移植资源包。
 
 模块名和文件名禁止空白名称、路径分隔符、控制字符及常见 Windows 非法/保留名称。新建和另存为仅使用 create_new 写入不存在的目标；普通保存的原子替换逻辑不变。初次创建失败会尝试移除本次创建的空目录，不递归清理。
 
@@ -192,14 +194,15 @@ set_group_layout 和 set_module_position 分别写入 layout 及直接子模块�
 | types/session.ts | DocumentSnapshot、ExternalChange、事件载荷映射 | Snapshot / ExternalChange / Tauri 事件 |
 | types/errors.ts | DocumentError（code/message） | I/O 与会话错误 |
 | types/processors.ts | ImageProcessor 脚本调用声明 | ImageProcessor / Node.processors / StyleNode.processors |
+| types/appearance.ts | 模块、文字、内容区、边框及带 type 的背景参数 | Rust 保留的 style 扩展对象；业务语义由 TS 检查 |
 
-TS 用 type 标签表达文字、图片、矩形和组合模块的预期渲染契约；组合模块的 layout 必填，children 可省略；叶子模块允许空 children 且不声明 layout。position 在放置记录中。Rust 当前不保证这些业务约定，TS 类型不是运行时校验器。全部已声明成员及嵌套数组、JSON 对象为 readonly；readonly 不会在运行时冻结对象。
+TS 用 type 标签表达文字、图片、矩形和组合模块的预期渲染契约；组合模块的 layout 必填，children 可省略；叶子模块的 width/height 必填，允许空 children 且不声明 layout。position 在放置记录中。Rust 当前不保证这些业务约定，TS 类型不是运行时校验器，应在渲染前调用 `src/render-input/` 的 `validateRenderDocument`。全部已声明成员及嵌套数组、JSON 对象为 readonly；readonly 不会在运行时冻结对象。
 
-Rust 的 properties 通过 flatten 展开，TS 不添加额外 properties 包装。未知扩展字段为只读 unknown，需要收窄后使用；title/sourceNotes、素材和样式等尚未完整校验的属性，不直接宣称具有某种已保证的类型。composition 只保证为 JsonObject，具体渲染参数留待合成模块建立明确输入约束。此处不复制一套 Rust 校验规则。
+Rust 的 properties 通过 flatten 展开，TS 不添加额外 properties 包装。未知扩展字段为只读 unknown，需要收窄后使用。原始 composition 仍为 JsonObject；style 及素材字段的 TS 类型描述预期契约，来自 Rust 的实际数据仍需运行时校验。校验成功后使用独立的 DocumentRenderInput，默认值不回写，未知渲染参数不参与绘制，title/sourceNotes 等元数据仍留在原始文档。
 
 ExternalChange 的 kind 与 Rust 序列化标签一致；modified 的 document/error 显式允许 null，Snapshot.externalChange 也显式允许 null。DocumentError 仅包含 code/message。document-closed 事件的载荷是 sessionId 字符串，不是快照。
 
-Rust u32 坐标与尺寸映射为 TS number，整数及 u32 范围由 Serde 转换要求保证，正尺寸及网格范围不再检查。revision/version 是 Rust u64，当前映射为 number；后续 IPC 调用封装需处理超出 Number.MAX_SAFE_INTEGER 的情况，不能假定整个 u64 范围都能在 JS 中无损表达。
+Rust u32 网格二元组映射为 TS number，整数及 u32 范围由 Serde 转换要求保证；Rust 不检查正布局尺寸或网格越界，TS 在渲染前检查。叶子像素宽高仍是 Rust 扩展数据，由 TS 检查为正安全整数。revision/version 是 Rust u64，当前映射为 number；不能假定整个 u64 范围都能在 JS 中无损表达，渲染入口已检查 revision 为非负安全整数。
 
 types 目录只定义数据结构；Style 的 invoke 封装位于 `src/styles/`，事件订阅、编辑器状态及图片合成尚未实现。运行 `cd desktop && npm run build` 已通过 TypeScript 检查与 Vite 构建；遵循仓库约束，未为类型声明新增测试代码。
 

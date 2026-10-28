@@ -1,0 +1,20 @@
+/** Defaults apply only to omitted fields and never get written back to JSON. */
+export const RENDER_DEFAULTS = Object.freeze({
+  outputSize: "auto",
+  groupPadding: 24,
+  groupGap: 24,
+  contentPadding: 0,
+  radius: 0,
+  opacity: 1,
+  borderWidth: 1,
+  borderColor: "#000000",
+  fontSize: 24,
+  textColor: "#000000",
+  textAlign: "left",
+  verticalAlign: "center",
+  imageAlign: "center",
+  bold: false,
+  wrap: true,
+  lineHeightRatio: 1.2,
+  backgroundFit: "cover",
+} as const);

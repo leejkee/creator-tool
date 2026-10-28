@@ -14,7 +14,7 @@
       "children": [
         {
           "position": [0, 0],
-          "module": {"id": "heading", "type": "text", "text": "图片说明"}
+          "module": {"id": "heading", "type": "text", "width": 320, "height": 80, "text": "图片说明"}
         },
         {
           "position": [0, 1],
@@ -23,9 +23,9 @@
             "type": "group",
             "layout": [3, 1],
             "children": [
-              {"position": [0, 0], "module": {"id": "detail-1", "type": "text", "text": "第一条"}},
-              {"position": [1, 0], "module": {"id": "detail-2", "type": "text", "text": "第二条"}},
-              {"position": [2, 0], "module": {"id": "detail-3", "type": "text", "text": "第三条"}}
+              {"position": [0, 0], "module": {"id": "detail-1", "type": "text", "width": 320, "height": 64, "text": "第一条"}},
+              {"position": [1, 0], "module": {"id": "detail-2", "type": "text", "width": 320, "height": 64, "text": "第二条"}},
+              {"position": [2, 0], "module": {"id": "detail-3", "type": "text", "width": 320, "height": 64, "text": "第三条"}}
             ]
           }
         }

@@ -6,7 +6,7 @@
 
 一份文档包含 `image-create-tool-version: "v0.2.0"`、非空 documentId、非负整数 revision、composition 对象和 modules 数组。文档的工作目录、dirty 和会话版本是 Rust 会话状态，不写入 JSON。
 
-modules 仍是顶层模块列表；本次不改变其画布组合规则，也不为顶层模块推导网格位置。需要整体网格时，在 modules 中放置一个 group，由它管理子模块布局。
+modules 保留数组格式，但新 TS 渲染规则要求且只允许一个根模块。根可以是叶子或 group；需要多个内容时，在根 group 的 children 中组织，不为多个根额外推导画布排列。Rust 仍可读写不满足该渲染约定的文档。
 
 模块约定使用非空 id、type，type 为 text/image/rect/group，模块 ID 在文档内唯一，text 模块提供 text 字符串。Rust 当前只将 id/type 解码为字符串，不检查非空、枚举或唯一性，也不检查 text 内容。样式、素材引用和其他扩展字段随模块保存；elements、模块内的 position 及 span 也不再因业务规则被拒绝，但不会自动转换为现有网格结构。
 
@@ -16,11 +16,11 @@ modules 仍是顶层模块列表；本次不改变其画布组合规则，也不
 
 `assetId`、`assetQuery`、`assetsDir`、`assetAliases` 属于旧方案，Rust 仍可保留读写，但不表示新 TS 渲染层支持素材 ID、搜索或别名解析。旧样例使用这些字段时需要迁移。
 
-路径输入检查入口为 `src/render-input/asset.ts` 的 `resolveLocalImagePath`；缺省或空白值返回 `undefined`，非法类型、NUL 或 URI 形式报错。目录解析、读取和解码尚未实现。
+路径输入检查入口为 `src/render-input/asset.ts` 的 `resolveLocalImagePath`；缺省或空白值返回 `undefined`，非法类型、NUL 或 URI 形式报错。目录解析、读取和解码尚未实现。完整约定见 [渲染参数校验文档](tauri-render-validation.md#本地素材引用)。
 
 ## 渲染默认值示例：图片 fit
 
-渲染默认值由 `desktop/src/render-input/` 统一解析。TS 数据契约保留字段的可选性，解析函数为省略字段补默认值，不修改文档或回写 JSON。此处先实现图片模块的 fit，其他渲染字段尚未纳入。解析器自身不执行校验，Rust 当前也不检查 fit。
+渲染默认值由 `desktop/src/render-input/` 统一解析。`validateRenderDocument` 接受来自 Rust 的对象，校验参数后返回独立的只读渲染输入及警告；失败时返回字段错误并阻止渲染，不修改文档或回写 JSON。具体尺寸、样式、背景及默认值见 [渲染参数校验与布局规则](tauri-render-validation.md)。Rust 不承担 fit 等渲染参数的业务校验。
 
 fit 表示图片如何缩放到模块内容区域。各取值的含义如下；对齐位置由布局层决定，fit 本身不表示居中。
 
@@ -38,14 +38,14 @@ fit 表示图片如何缩放到模块内容区域。各取值的含义如下；�
 | --- | --- |
 | 省略 | Rust 保留省略；TS 解析为 `"contain"` |
 | `"contain"` / `"cover"` / `"stretch"` / `"height"` / `"width"` | TS 预期取值，解析时保留指定值 |
-| null、空字符串、其他字符串或其他类型 | Rust 作为扩展字段保留；TS 类型不接纳这些值，但当前没有运行时校验兜底 |
+| null、空字符串、其他字符串或其他类型 | Rust 作为扩展字段保留；TS 运行时校验报错，阻止渲染 |
 
 现有 [module-style.json](../desktop/examples/module-style.json) 的图片子配方省略 fit。应用该 Style 时，目标已有的 fit 会被清除；后续解析应用后的图片模块时得到默认 `"contain"`。Style 自身不预填默认值。
 
 ```ts
 import { resolveImageRenderInput } from "./render-input";
 
-// desktop/src/ 中的调用示例；调用者传入符合 ImageModule 契约的模块。
+// 仅演示 fit 的小型解析函数；整份文档应使用 validateRenderDocument。
 const defaults = resolveImageRenderInput({ id: "picture", type: "image" });
 // defaults.fit === "contain"
 
@@ -55,11 +55,11 @@ const explicit = resolveImageRenderInput({ id: "picture", type: "image", fit: "c
 
 为后续字段添加默认值时，沿用以下步骤：
 
-1. 在协议中明确字段类型、范围、默认值，以及省略和 null 的语义。当前 Rust 不添加业务校验，校验方案后续再设计。
+1. 在协议中明确字段类型、范围、默认值，以及省略和 null 的语义。Rust 不添加业务校验，渲染参数由 TS 检查。
 2. 在 TS 文档类型中声明可选字段，在渲染输入类型中声明解析后的必填字段。
-3. 在 `IMAGE_RENDER_DEFAULTS` 中定义默认值，在 `resolveImageRenderInput` 中仅为省略的字段补值。后续预览与导出共用此入口，避免各自补默认值。
+3. 在 `render-input/` 的集中默认常量中定义默认值，并接入统一校验入口。仅为省略的字段补值，预览与导出共用已解析输入，避免各自补默认值。
 
-修改默认值的位置为 [image.ts](../desktop/src/render-input/image.ts)。默认值改变会影响所有省略该字段的文档；需要固定行为时，在 JSON 中显式填写字段。数值或布尔字段应保留合法的 0 和 false，不用 `value || defaultValue` 判断省略。此解析器不作为任意文件 JSON 的校验入口。目前尚未接入实际绘制、预览或导出。
+图片 fit 默认值位于 [image.ts](../desktop/src/render-input/image.ts)，其余通用参数见 [defaults.ts](../desktop/src/render-input/defaults.ts)。默认值改变会影响所有省略该字段的文档；需要固定行为时，在 JSON 中显式填写字段。数值或布尔字段保留合法的 0 和 false，不用 `value || defaultValue` 判断省略。小型 `resolveImageRenderInput` 只检查 fit；整份文档的入口为 `validateRenderDocument`。目前尚未接入实际绘制、预览或导出。
 
 ## 网格与放置记录
 
@@ -72,8 +72,8 @@ const explicit = resolveImageRenderInput({ id: "picture", type: "image", fit: "c
   "layout": [2, 2],
   "gap": 16,
   "children": [
-    {"position": [0, 0], "module": {"id": "image-1", "type": "image", "assetPath": "hero.png"}},
-    {"position": [0, 1], "module": {"id": "text-1", "type": "text", "text": "英雄说明"}}
+    {"position": [0, 0], "module": {"id": "image-1", "type": "image", "width": 320, "height": 320, "assetPath": "hero.png"}},
+    {"position": [0, 1], "module": {"id": "text-1", "type": "text", "width": 320, "height": 80, "text": "英雄说明"}}
   ]
 }
 ```
@@ -86,6 +86,7 @@ const explicit = resolveImageRenderInput({ id: "picture", type: "image", fit: "c
 - 不同 group 的坐标系独立，可以各自使用 `[0, 0]`；嵌套 group 的单元格数量与父级无关。
 - children 的数组顺序不决定网格位置；位置由 position 唯一表达。调整数组顺序不会重新分配坐标。
 - text/image/rect 不允许 layout 或非空 children。不支持对象形式的 column/row/grid/fixed 布局、跨行跨列 span，以及旧 elements。
+- 新 TS 规则要求叶子 width/height 为正安全整数，不允许省略或 auto；group 的自然尺寸从子内容、padding、gap 和边框计算，不使用手动容器宽高。composition.width/height 控制最终 PNG 尺寸，允许正安全整数、auto 或省略。
 - 放置记录允许其他扩展元数据，读写时保留；其内容不会被误当作模块结构递归处理。
 
 Rust 使用 `Node { layout: Option<(u32, u32)>, children: Vec<PlacedModule>, ... }` 和 `PlacedModule { position: (u32, u32), module: Node, ... }` 表达；叶子模块不设置 layout。暂不引入独立 Tree 类、父指针、坐标映射文件或稠密二维数组。
@@ -128,7 +129,7 @@ Rust 负责序列化与状态管理，不执行 TS、不查询脚本注册表，
 - patch_document_node 修改扩展属性，拒绝将强类型结构字段 id/type/children/layout 写入扩展 map；其他扩展字段不再进行业务校验。结构编辑使用专用接口或 replace_document。
 - 文件打开、模板创建、文档替换、节点编辑、编码保存、另存为及外部文件检测不再执行文档业务校验。解析/序列化失败返回错误，保留当前会话和源文件；版本、身份、未保存内容、文件名及外部修改冲突保护仍保留。
 
-layout/position 只表达逻辑布局。Rust 不计算文字换行、行列像素尺寸或最终坐标，TS 根据画布、内容和视觉参数完成测量与合成，预览与导出使用相同逻辑。gap 等视觉参数保留但当前尚未做完整数值校验。
+layout/position 只表达逻辑布局。Rust 不计算文字换行、行列像素尺寸或最终坐标。TS 已实现渲染参数校验，实际测量、布局与合成仍由后续 Engine 完成，预览与导出共用相同逻辑。
 
 ## 格式变更
 

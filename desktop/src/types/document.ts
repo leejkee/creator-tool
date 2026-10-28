@@ -1,5 +1,8 @@
 import type { ExtensionFields, JsonObject } from "./json";
 import type { ImageProcessor } from "./processors";
+import type { ContentStyle, ImageFit, ModuleStyle, TextStyle } from "./appearance";
+
+export type { ImageFit } from "./appearance";
 
 /** Corresponds to creator_document_core::DOCUMENT_VERSION. */
 export type DocumentVersion = "v0.2.0";
@@ -10,39 +13,32 @@ export type GridLayout = readonly [rows: number, columns: number];
 /** Zero-based u32 coordinates, relative to the immediate parent group. */
 export type GridPosition = readonly [row: number, column: number];
 
-/** 图片相对模块内容区域的缩放方式；不决定对齐位置。 */
-export type ImageFit =
-  /** 等比完整显示：整张图片放入区域内，不裁剪、不变形，比例不同时会留空。 */
-  | "contain"
-  /** 等比铺满：图片覆盖整个区域，超出边界的部分需要裁剪。 */
-  | "cover"
-  /** 拉伸铺满：宽高分别适配区域，可能改变原图比例。 */
-  | "stretch"
-  /** 高度适配：等比缩放至区域高度，宽度可能留空或超出。 */
-  | "height"
-  /** 宽度适配：等比缩放至区域宽度，高度可能留空或超出。 */
-  | "width";
-
 interface ModuleBase extends ExtensionFields {
   readonly id: string;
-  /** 图片缩放方式；省略时渲染按 contain（等比完整显示）处理，不回写 JSON。 */
-  readonly fit?: ImageFit;
+  readonly style?: ModuleStyle;
 }
 
 /** Rust permits empty children on leaves and omits them when serializing. */
 interface LeafModule extends ModuleBase {
+  /** Fixed outer box dimensions, in positive integer pixels. */
+  readonly width: number;
+  readonly height: number;
   readonly layout?: never;
   readonly children?: readonly [];
 }
 
 export interface TextModule extends LeafModule {
   readonly type: "text";
+  readonly style?: TextStyle;
   /** Expected text content; Rust currently preserves it as an unchecked extension. */
   readonly text: string;
 }
 
 export interface ImageModule extends LeafModule {
   readonly type: "image";
+  readonly style?: ContentStyle;
+  /** Omitted means contain; validated at runtime in the TS rendering layer. */
+  readonly fit?: ImageFit;
   /** Prepared local file; relative paths use the JSON document's directory. */
   readonly assetPath?: string;
   /** Runs in array order before fitting the result into the module bounds. */
@@ -55,6 +51,8 @@ export interface RectModule extends LeafModule {
 
 export interface GroupModule extends ModuleBase {
   readonly type: "group";
+  readonly padding?: number;
+  readonly gap?: number;
   readonly layout: GridLayout;
   /** Omitted when empty. Array order does not determine grid coordinates. */
   readonly children?: readonly PlacedModule[];

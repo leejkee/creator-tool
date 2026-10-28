@@ -11,9 +11,17 @@ export const IMAGE_RENDER_DEFAULTS = {
   fit: "contain",
 } as const satisfies ImageRenderInput;
 
-/** Resolve defaults without validation or changing the source document. */
-export function resolveImageRenderInput(module: ImageModule): ImageRenderInput {
+export function resolveImageFit(fit: unknown = undefined, fallback: ImageFit = IMAGE_RENDER_DEFAULTS.fit): ImageFit {
+  if (fit === undefined) return fallback;
+  if (fit === "contain" || fit === "cover" || fit === "stretch" || fit === "height" || fit === "width") {
+    return fit;
+  }
+  throw new TypeError("fit must be contain, cover, stretch, height, or width");
+}
+
+/** Validate fit and resolve its default without changing the source document. */
+export function resolveImageRenderInput(module: Pick<ImageModule, "fit"> & { readonly [key: string]: unknown }): ImageRenderInput {
   return {
-    fit: module.fit === undefined ? IMAGE_RENDER_DEFAULTS.fit : module.fit,
+    fit: resolveImageFit(module.fit),
   };
 }
