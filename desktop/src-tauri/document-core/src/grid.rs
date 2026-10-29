@@ -23,20 +23,32 @@ pub(super) fn find_node_mut<'a>(nodes: &'a mut [Node], id: &str) -> Option<&'a m
 
 impl DocumentStore {
     /// Shrinking a grid never relocates or deletes modules implicitly.
-    pub fn set_group_layout(
+    pub fn set_module_layout(
         &mut self,
         id: &str,
         expected: u64,
-        group_id: &str,
+        parent_id: &str,
         layout: (u32, u32),
     ) -> Result<Snapshot> {
         let session = self.session(id)?;
         session.require_version(expected)?;
         let mut document = session.state.document.clone();
-        let group = find_node_mut(&mut document.modules, group_id)
-            .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", group_id))?;
-        group.layout = Some(layout);
+        let parent = find_node_mut(&mut document.modules, parent_id)
+            .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", parent_id))?;
+        parent.layout = Some(layout);
         session.commit(document)
+    }
+
+    /// Compatibility name for existing callers; no module type is implied.
+    #[deprecated(note = "Use set_module_layout; layout is a module property")]
+    pub fn set_group_layout(
+        &mut self,
+        id: &str,
+        expected: u64,
+        module_id: &str,
+        layout: (u32, u32),
+    ) -> Result<Snapshot> {
+        self.set_module_layout(id, expected, module_id, layout)
     }
 
     /// Move a direct child within its current grid. Cross-container moves are separate work.
@@ -44,16 +56,16 @@ impl DocumentStore {
         &mut self,
         id: &str,
         expected: u64,
-        group_id: &str,
+        parent_id: &str,
         module_id: &str,
         position: (u32, u32),
     ) -> Result<Snapshot> {
         let session = self.session(id)?;
         session.require_version(expected)?;
         let mut document = session.state.document.clone();
-        let group = find_node_mut(&mut document.modules, group_id)
-            .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", group_id))?;
-        let placed = group
+        let parent = find_node_mut(&mut document.modules, parent_id)
+            .ok_or_else(|| DocumentError::new("NODE_NOT_FOUND", parent_id))?;
+        let placed = parent
             .children
             .iter_mut()
             .find(|placed| placed.module.id == module_id)

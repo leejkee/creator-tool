@@ -152,13 +152,13 @@ export function resolveModuleStyle(
 ): RenderContentStyle;
 export function resolveModuleStyle(
   value: unknown,
-  type: ModuleType,
+  type: ModuleType | undefined,
   path: string,
   ctx: ValidationContext,
 ): RenderStyle;
 export function resolveModuleStyle(
   value: unknown,
-  type: ModuleType,
+  type: ModuleType | undefined,
   path: string,
   ctx: ValidationContext,
 ): RenderStyle | RenderContentStyle | RenderTextStyle {

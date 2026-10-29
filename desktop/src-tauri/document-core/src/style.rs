@@ -4,20 +4,11 @@ use crate::{ImageProcessor, Node, PlacedModule};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum ModuleType {
-    Text,
-    Image,
-    Rect,
-    Group,
-}
-
 /// Reuses module geometry and visual parameters, without requiring content or IDs.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StyleNode {
-    #[serde(rename = "type")]
-    pub kind: ModuleType,
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<PlacedModule<StyleNode>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

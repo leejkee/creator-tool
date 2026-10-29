@@ -22,8 +22,8 @@ pub struct ImageDocument {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Node {
     pub id: String,
-    #[serde(rename = "type")]
-    pub kind: String,
+    #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<PlacedModule>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

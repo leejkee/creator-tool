@@ -1,8 +1,8 @@
 /** Defaults apply only to omitted fields and never get written back to JSON. */
 export const RENDER_DEFAULTS = Object.freeze({
   outputSize: "auto",
-  groupPadding: 24,
-  groupGap: 24,
+  modulePadding: 24,
+  moduleGap: 24,
   contentPadding: 0,
   radius: 0,
   opacity: 1,

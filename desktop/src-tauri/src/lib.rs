@@ -29,7 +29,7 @@ pub fn run() {
             documents::list_documents,
             documents::replace_document,
             documents::patch_document_node,
-            documents::set_group_layout,
+            documents::set_module_layout,
             documents::set_module_position,
             documents::apply_module_style,
             documents::apply_document_style,

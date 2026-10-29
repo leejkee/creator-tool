@@ -4,7 +4,7 @@ import { IMAGE_RENDER_DEFAULTS, resolveImageFit } from "./image";
 import { resolveProcessors } from "./processors";
 import { imagePath, resolveModuleStyle, validateContentBox } from "./style";
 import type {
-  RenderGroupModule,
+  RenderLayoutModule,
   RenderModule,
   RenderValidationResult,
 } from "./types";
@@ -35,7 +35,7 @@ const UNSUPPORTED_MODULE_FIELDS = [
   "rowGap",
   "columnGap",
 ];
-const MODULE_TYPES = ["text", "image", "rect", "group"] as const;
+const MODULE_TYPES = ["text", "image", "rect"] as const;
 
 interface Slot {
   value?: RenderModule;
@@ -54,7 +54,7 @@ type Frame =
   | {
       readonly kind: "finish";
       readonly raw: Fields;
-      readonly group: Omit<RenderGroupModule, "children">;
+      readonly parent: Omit<RenderLayoutModule, "children">;
       readonly children: readonly ChildSlot[];
       readonly slot: Slot;
     };
@@ -190,7 +190,7 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
         slot.value ? [{ position, module: slot.value }] : [],
       );
       if (nonempty.length > 0) {
-        frame.slot.value = { ...frame.group, children: nonempty };
+        frame.slot.value = { ...frame.parent, children: nonempty };
       }
       continue;
     }
@@ -219,14 +219,22 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
     if (id !== "") {
       ids.add(id);
     }
-    const type: ModuleType = enumeration(
-      fields.type,
-      `${path}.type`,
-      local,
-      MODULE_TYPES,
-    );
-    if (!MODULE_TYPES.some((candidate) => candidate === fields.type)) {
-      continue;
+    const layoutPresent = fields.layout !== undefined;
+    let type: ModuleType | undefined;
+    if (layoutPresent) {
+      if (fields.type !== undefined) {
+        error(
+          local,
+          `${path}.type`,
+          "布局模块不配置 type；图片、文字等内容请放入最小子模块",
+        );
+      }
+      unsupportedFields(fields, ["text"], path, local);
+    } else {
+      type = enumeration(fields.type, `${path}.type`, local, MODULE_TYPES);
+      if (!MODULE_TYPES.some((candidate) => candidate === fields.type)) {
+        continue;
+      }
     }
     unsupportedFields(
       fields,
@@ -245,12 +253,11 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
         error(local, `${path}.processors`, "只有图片模块支持处理链");
       }
     }
-    if (type === "group") {
+    if (layoutPresent) {
       unsupportedFields(fields, ["width", "height"], path, local);
       const layout = gridPair(fields.layout, `${path}.layout`, local, 1);
-      const group = {
+      const parent = {
         id,
-        type,
         path,
         layout: layout ?? ([1, 1] as const),
         padding: integer(
@@ -258,21 +265,24 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
           `${path}.padding`,
           local,
           0,
-          D.groupPadding,
+          D.modulePadding,
         ),
-        gap: integer(fields.gap, `${path}.gap`, local, 0, D.groupGap),
+        gap: integer(fields.gap, `${path}.gap`, local, 0, D.moduleGap),
         style: resolveModuleStyle(fields.style, type, `${path}.style`, local),
       };
       const { slots, visits } = children(fields, layout, path, local);
       active.add(fields);
-      stack.push({ kind: "finish", raw: fields, group, children: slots, slot });
+      stack.push({
+        kind: "finish",
+        raw: fields,
+        parent,
+        children: slots,
+        slot,
+      });
       for (let i = visits.length - 1; i >= 0; i--) {
         stack.push(visits[i]);
       }
       continue;
-    }
-    if (fields.layout !== undefined) {
-      error(local, `${path}.layout`, "叶子模块不能配置 layout");
     }
     if (array(fields.children, `${path}.children`, local, true).length > 0) {
       error(local, `${path}.children`, "叶子模块不能包含子模块");
@@ -330,7 +340,7 @@ export function validateRenderDocument(value: unknown): RenderValidationResult {
         `${path}.style`,
         local,
       );
-      slot.value = { id, type, path, width, height, style };
+      slot.value = { id, type: "rect", path, width, height, style };
     }
   }
   const root = rootSlots[0]?.value;

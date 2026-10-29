@@ -76,7 +76,8 @@ export interface PixelBox extends PixelSize {
 
 export interface ModuleLayout {
   readonly moduleId: string;
-  readonly type: ModuleType;
+  /** Content kind is absent for modules organized by layout. */
+  readonly type?: ModuleType;
   readonly path: string;
   /** Final absolute coordinates, with at most one decimal place. */
   readonly box: PixelBox;

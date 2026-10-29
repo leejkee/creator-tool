@@ -8,7 +8,7 @@ export type {
   DocumentVersion,
   GridLayout,
   GridPosition,
-  GroupModule,
+  LayoutModule,
   ImageDocument,
   ImageFit,
   ImageModule,

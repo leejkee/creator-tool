@@ -9,7 +9,7 @@ export type {
   RenderBackground,
   RenderBorder,
   RenderContentStyle,
-  RenderGroupModule,
+  RenderLayoutModule,
   RenderImageModule,
   RenderIssue,
   RenderIssueCode,
@@ -21,3 +21,4 @@ export type {
   RenderTextStyle,
   RenderValidationResult,
 } from "./types";
+export { hasLayout } from "./types";

@@ -1,7 +1,6 @@
 {
   "resourceKind": "style",
   "module": {
-    "type": "group",
     "layout": [2, 1],
     "gap": 12,
     "style": {"background": {"type": "color", "color": "#20212A"}, "radius": 12},

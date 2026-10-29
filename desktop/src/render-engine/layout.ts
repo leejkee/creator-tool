@@ -1,6 +1,7 @@
+import { hasLayout } from "../render-input";
 import type {
   DocumentRenderInput,
-  RenderGroupModule,
+  RenderLayoutModule,
   RenderModule,
 } from "../render-input";
 import { failure } from "./control";
@@ -68,7 +69,7 @@ function measure(root: RenderModule): Map<RenderModule, Measured> {
   ];
   while (stack.length > 0) {
     const { module, finish } = stack.pop()!;
-    if (module.type !== "group") {
+    if (!hasLayout(module)) {
       measured.set(module, {
         module,
         width: module.width,
@@ -142,7 +143,7 @@ function measure(root: RenderModule): Map<RenderModule, Measured> {
 }
 
 function spacing(
-  module: RenderGroupModule,
+  module: RenderLayoutModule,
   content: number,
   count: number,
   size: number,
@@ -204,25 +205,23 @@ export function computeLayout(input: DocumentRenderInput): LayoutResult {
   const fixedHeight =
     input.composition.height === "auto" ? undefined : input.composition.height;
   const border = input.root.style.border?.width ?? 0;
-  const minimumWidth =
-    input.root.type === "group"
-      ? natural.contentWidth + 2 * border
-      : natural.width;
-  const minimumHeight =
-    input.root.type === "group"
-      ? natural.contentHeight + 2 * border
-      : natural.height;
+  const minimumWidth = hasLayout(input.root)
+    ? natural.contentWidth + 2 * border
+    : natural.width;
+  const minimumHeight = hasLayout(input.root)
+    ? natural.contentHeight + 2 * border
+    : natural.height;
   const scale = Math.min(
     1,
     fixedWidth === undefined ? 1 : fixedWidth / minimumWidth,
     fixedHeight === undefined ? 1 : fixedHeight / minimumHeight,
   );
   const rootWidth =
-    input.root.type === "group" && fixedWidth !== undefined
+    hasLayout(input.root) && fixedWidth !== undefined
       ? fixedWidth
       : natural.width * scale;
   const rootHeight =
-    input.root.type === "group" && fixedHeight !== undefined
+    hasLayout(input.root) && fixedHeight !== undefined
       ? fixedHeight
       : natural.height * scale;
   const width = fixedWidth ?? Math.ceil(rootWidth);
@@ -266,7 +265,7 @@ export function computeLayout(input: DocumentRenderInput): LayoutResult {
     let gapX = 0;
     let gapY = 0;
     let contentBox: PixelBox | undefined;
-    if (module.type === "group") {
+    if (hasLayout(module)) {
       const horizontal = spacing(
         module,
         size.contentWidth,
@@ -315,7 +314,7 @@ export function computeLayout(input: DocumentRenderInput): LayoutResult {
     };
     parent?.children.push(node);
     nodes.push(node);
-    if (module.type === "group") {
+    if (hasLayout(module)) {
       const columnOffsets = positions(
         size.columns,
         x + rawBorder + paddingX,

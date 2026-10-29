@@ -206,16 +206,16 @@ pub async fn save_document_as(
 }
 
 #[tauri::command]
-pub async fn set_group_layout(
+pub async fn set_module_layout(
     app: AppHandle,
     state: State<'_, Documents>,
     session_id: String,
     expected_version: u64,
-    group_id: String,
+    parent_id: String,
     layout: (u32, u32),
 ) -> Result<Snapshot> {
     mutate(&app, &state, &session_id, |store| {
-        store.set_group_layout(&session_id, expected_version, &group_id, layout)
+        store.set_module_layout(&session_id, expected_version, &parent_id, layout)
     })
 }
 
@@ -225,7 +225,7 @@ pub async fn set_module_position(
     state: State<'_, Documents>,
     session_id: String,
     expected_version: u64,
-    group_id: String,
+    parent_id: String,
     module_id: String,
     position: (u32, u32),
 ) -> Result<Snapshot> {
@@ -233,7 +233,7 @@ pub async fn set_module_position(
         store.set_module_position(
             &session_id,
             expected_version,
-            &group_id,
+            &parent_id,
             &module_id,
             position,
         )

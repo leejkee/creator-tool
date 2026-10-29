@@ -75,6 +75,7 @@ interface RenderModuleBase {
 }
 
 interface RenderLeaf extends RenderModuleBase {
+  readonly layout?: never;
   readonly width: number;
   readonly height: number;
 }
@@ -102,8 +103,8 @@ export interface RenderPlacedModule {
   readonly module: RenderModule;
 }
 
-export interface RenderGroupModule extends RenderModuleBase {
-  readonly type: "group";
+export interface RenderLayoutModule extends RenderModuleBase {
+  readonly type?: never;
   /** Original grid bounds; Engine folds empty rows and columns without rewriting JSON. */
   readonly layout: GridLayout;
   readonly padding: number;
@@ -112,14 +113,14 @@ export interface RenderGroupModule extends RenderModuleBase {
 }
 
 export type RenderModule =
-  RenderTextModule | RenderImageModule | RenderRectModule | RenderGroupModule;
+  RenderTextModule | RenderImageModule | RenderRectModule | RenderLayoutModule;
 
 export interface DocumentRenderInput {
   readonly composition: {
     readonly width: number | "auto";
     readonly height: number | "auto";
   };
-  /** Empty text and empty groups have already been pruned from this independent tree. */
+  /** Empty text and empty layout modules have already been pruned from this independent tree. */
   readonly root: RenderModule;
 }
 
@@ -134,3 +135,8 @@ export type RenderValidationResult =
       readonly errors: readonly RenderIssue[];
       readonly warnings: readonly RenderIssue[];
     };
+
+/** Layout is a module capability, not a content type. */
+export function hasLayout(module: RenderModule): module is RenderLayoutModule {
+  return module.layout !== undefined;
+}

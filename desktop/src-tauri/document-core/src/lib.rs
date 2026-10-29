@@ -13,5 +13,5 @@ pub use document::{DOCUMENT_VERSION, ImageDocument, Node, PlacedModule};
 pub use error::{DocumentError, Result};
 pub use processors::ImageProcessor;
 pub use session::{DocumentStore, ExternalChange, Snapshot};
-pub use style::{ModuleResource, ModuleType, StyleNode};
+pub use style::{ModuleResource, StyleNode};
 pub use style_application::apply_style;

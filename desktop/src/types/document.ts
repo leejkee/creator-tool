@@ -15,7 +15,7 @@ export type DocumentVersion = "v0.2.0";
 /** Intended positive grid dimensions; Rust only decodes the pair as u32. */
 export type GridLayout = readonly [rows: number, columns: number];
 
-/** Zero-based u32 coordinates, relative to the immediate parent group. */
+/** Zero-based u32 coordinates, relative to the immediate parent module. */
 export type GridPosition = readonly [row: number, column: number];
 
 interface ModuleBase extends ExtensionFields {
@@ -54,8 +54,9 @@ export interface RectModule extends LeafModule {
   readonly type: "rect";
 }
 
-export interface GroupModule extends ModuleBase {
-  readonly type: "group";
+export interface LayoutModule extends ModuleBase {
+  /** Composition is determined by layout, not a separate content type. */
+  readonly type?: never;
   readonly padding?: number;
   readonly gap?: number;
   readonly layout: GridLayout;
@@ -64,9 +65,10 @@ export interface GroupModule extends ModuleBase {
 }
 
 /** Intended rendering contract; Rust no longer enforces module business rules. */
-export type ModuleNode = TextModule | ImageModule | RectModule | GroupModule;
+export type ModuleNode = TextModule | ImageModule | RectModule | LayoutModule;
 
-export type ModuleType = ModuleNode["type"];
+/** Content kinds belong only to minimum modules. */
+export type ModuleType = "text" | "image" | "rect";
 
 /** Corresponds to Rust PlacedModule; position belongs to the parent relation. */
 export interface PlacedModule<T = ModuleNode> extends ExtensionFields {

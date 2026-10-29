@@ -9,7 +9,8 @@ import type { ImageProcessor } from "./processors";
 
 /** One-shot Style parameters and child positions, without required content or IDs. */
 export interface StyleNode extends ExtensionFields {
-  readonly type: ModuleType;
+  /** Omitted for layout or decoration-only recipes. */
+  readonly type?: ModuleType;
   /** Optional for decoration-only styles; required when matching child recipes. */
   readonly layout?: GridLayout;
   readonly children?: readonly PlacedModule<StyleNode>[];

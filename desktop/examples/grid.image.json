@@ -8,7 +8,6 @@
   "modules": [
     {
       "id": "overview",
-      "type": "group",
       "layout": [2, 2],
       "gap": 16,
       "children": [
@@ -20,7 +19,6 @@
           "position": [0, 1],
           "module": {
             "id": "details",
-            "type": "group",
             "layout": [3, 1],
             "children": [
               {"position": [0, 0], "module": {"id": "detail-1", "type": "text", "width": 320, "height": 64, "text": "第一条"}},
