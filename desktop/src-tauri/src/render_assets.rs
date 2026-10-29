@@ -15,8 +15,8 @@ pub struct RenderAssetError {
 
 #[derive(Serialize)]
 pub struct RenderAsset {
-    bytes: Vec<u8>,
-    version: String,
+    pub(super) bytes: Vec<u8>,
+    pub(super) version: String,
 }
 
 fn error(code: &'static str, message: impl ToString) -> RenderAssetError {
@@ -56,7 +56,10 @@ fn resolve(asset_path: &str, document_directory: &str) -> Result<PathBuf, Render
     fs::canonicalize(path).map_err(|e| error("IMAGE_UNAVAILABLE", e))
 }
 
-fn read(asset_path: &str, document_directory: &str) -> Result<RenderAsset, RenderAssetError> {
+pub(super) fn read(
+    asset_path: &str,
+    document_directory: &str,
+) -> Result<RenderAsset, RenderAssetError> {
     let path = resolve(asset_path, document_directory)?;
     let metadata = fs::metadata(&path).map_err(|e| error("IMAGE_UNAVAILABLE", e))?;
     if !metadata.is_file() {

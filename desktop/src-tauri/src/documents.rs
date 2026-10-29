@@ -10,7 +10,7 @@ type Result<T> = std::result::Result<T, DocumentError>;
 #[derive(Default)]
 pub struct Documents(Mutex<DocumentStore>);
 
-fn with_store<T>(
+pub(super) fn with_store<T>(
     state: &Documents,
     action: impl FnOnce(&mut DocumentStore) -> Result<T>,
 ) -> Result<T> {
@@ -20,7 +20,7 @@ fn with_store<T>(
     })?;
     action(&mut store)
 }
-fn publish(app: &AppHandle, snapshot: &Snapshot) {
+pub(super) fn publish(app: &AppHandle, snapshot: &Snapshot) {
     if let Err(error) = app.emit("document-state-changed", snapshot) {
         eprintln!("document-state-changed event delivery failed: {error}");
     }

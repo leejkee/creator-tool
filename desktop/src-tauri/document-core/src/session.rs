@@ -33,6 +33,7 @@ pub struct Snapshot {
     pub external_change: Option<ExternalChange>,
 }
 
+#[derive(Clone)]
 pub(super) struct Session {
     pub(super) state: Snapshot,
     pub(super) baseline_document: ImageDocument,
@@ -274,6 +275,46 @@ impl DocumentStore {
         session.state.dirty = false;
         Ok(session.state.clone())
     }
+    /// Persist a frontend working copy without leaving backend edits behind on failure.
+    /// A candidate session owns revision changes until the file write succeeds.
+    pub fn save_working_copy(
+        &mut self,
+        id: &str,
+        expected: u64,
+        document: ImageDocument,
+        destination: Option<(&Path, &str)>,
+    ) -> Result<Snapshot> {
+        let session = self.session(id)?;
+        session.require_version(expected)?;
+        if destination.is_none() {
+            session.check()?;
+            if session.state.external_change.is_some() {
+                return Err(DocumentError::new(
+                    "EXTERNAL_CHANGE",
+                    "Resolve external changes before saving",
+                ));
+            }
+            session.require_version(expected)?;
+        }
+        let mut candidate = DocumentStore::default();
+        candidate.sessions.insert(id.to_owned(), session.clone());
+        let edited = candidate.replace(id, expected, document)?;
+        let saved = match destination {
+            Some((directory, filename)) => {
+                candidate.save_as(id, edited.version, directory, filename)?
+            }
+            None => candidate.save(id, edited.version)?,
+        };
+        self.sessions.insert(
+            id.to_owned(),
+            candidate
+                .sessions
+                .remove(id)
+                .expect("Candidate session exists"),
+        );
+        Ok(saved)
+    }
+
     pub fn reload(&mut self, id: &str, expected: u64, discard_changes: bool) -> Result<Snapshot> {
         let session = self.session(id)?;
         session.require_version(expected)?;

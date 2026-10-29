@@ -86,11 +86,9 @@ fn rebase_style(style: &mut Value, source: &Path) {
     }
 }
 fn rebase_document(doc: &mut ImageDocument, source: &Path) {
-    let assets = doc
-        .properties
-        .entry("assetsDir")
-        .or_insert(Value::String("assets/".into()));
-    absolute_reference(assets, source);
+    if let Some(assets) = doc.properties.get_mut("assetsDir") {
+        absolute_reference(assets, source);
+    }
     if let Some(fonts) = doc
         .properties
         .get_mut("fonts")
@@ -219,12 +217,15 @@ impl DocumentStore {
                 format: DOCUMENT_VERSION.into(),
                 document_id: String::new(),
                 revision: 0,
-                composition:
-                    serde_json::json!({"width":1200,"height":"auto","padding":32,"gap":24})
-                        .as_object()
-                        .unwrap()
-                        .clone(),
-                modules: Vec::new(),
+                composition: Map::new(),
+                modules: vec![Node {
+                    id: Uuid::new_v4().to_string(),
+                    kind: None,
+                    children: Vec::new(),
+                    layout: Some((1, 1)),
+                    processors: Vec::new(),
+                    properties: Map::new(),
+                }],
                 properties: Map::new(),
             }
         };
@@ -233,10 +234,6 @@ impl DocumentStore {
         document
             .properties
             .insert("title".into(), Value::String(module_name.into()));
-        document
-            .properties
-            .entry("assetsDir")
-            .or_insert(Value::String("assets/".into()));
         let module_directory = base.join(module_name);
         fs::create_dir(&module_directory).map_err(|e| {
             DocumentError::new(

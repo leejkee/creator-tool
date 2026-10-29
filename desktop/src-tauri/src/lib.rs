@@ -1,24 +1,26 @@
 mod documents;
+mod editor_files;
 mod fonts;
 mod render_assets;
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(documents::Documents::default())
         .setup(|app| {
             documents::start_watcher(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
+            editor_files::load_editor_config,
+            editor_files::save_editor_config,
+            editor_files::scan_editor_workspace,
+            editor_files::choose_editor_path,
+            editor_files::save_editor_document,
+            editor_files::editor_png_destination,
+            editor_files::write_editor_png,
             fonts::list_local_font_families,
             render_assets::read_render_asset,
             render_assets::get_render_asset_version,
