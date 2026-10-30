@@ -6,6 +6,9 @@ import type {
   StoredFile,
   AppPreferences,
   WorkspaceItem,
+  ChoosePath,
+  FileBrowserPort,
+  DirectoryListing,
 } from "./contracts";
 
 export function fileRecord(snapshot: DocumentSnapshot): StoredFile {
@@ -49,7 +52,7 @@ export function fileRecord(snapshot: DocumentSnapshot): StoredFile {
       : undefined,
   };
 }
-export function createDesktopPort(): DesktopPort {
+export function createDesktopPort(choose: ChoosePath): DesktopPort {
   const snapshot = async (command: string, args: Record<string, unknown>) =>
     fileRecord(await invoke<DocumentSnapshot>(command, args));
   return {
@@ -72,14 +75,7 @@ export function createDesktopPort(): DesktopPort {
       >("scan_editor_workspace", { workspace });
       return result.map((e) => ({ ...e, preferred: e.preferred ?? undefined }));
     },
-    async choose(kind, initial) {
-      return (
-        (await invoke<string | null>("choose_editor_path", {
-          kind,
-          initial: initial ?? null,
-        })) ?? undefined
-      );
-    },
+    choose,
     open: (path) => snapshot("open_document", { path }),
     create: (workspace, name, template) =>
       snapshot("create_document", {
@@ -139,5 +135,18 @@ export function createDesktopPort(): DesktopPort {
         bytes: Array.from(bytes),
         overwriteVersion: version ?? null,
       }),
+  };
+}
+
+export function createFileBrowserPort(): FileBrowserPort {
+  return {
+    async browse(kind, path) {
+      const listing = await invoke<
+        Omit<DirectoryListing, "parent"> & { parent: string | null }
+      >("browse_editor_directory", { kind, path: path ?? null });
+      return { ...listing, parent: listing.parent ?? undefined };
+    },
+    resolve: (kind, directory, filename) =>
+      invoke("resolve_editor_selection", { kind, directory, filename }),
   };
 }

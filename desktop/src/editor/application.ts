@@ -62,6 +62,7 @@ export class EditorApplication {
   private issues: EditorIssue[] = [];
   private fonts: readonly string[] = [];
   private asking = false;
+  private interacting = false;
   private autoReloadAttempt = "";
   private readonly ask: Ask;
   constructor(
@@ -146,6 +147,14 @@ export class EditorApplication {
   }
   reportError(error: unknown): void {
     this.fail(error);
+  }
+  setInteractionPending(pending: boolean): void {
+    this.interacting = pending;
+    if (!pending) {
+      setTimeout(() => {
+        this.maybeReload();
+      }, 0);
+    }
   }
   private async perform(
     label: string,
@@ -789,6 +798,7 @@ export class EditorApplication {
       !this.file?.external?.reloadable ||
       this.busy ||
       this.asking ||
+      this.interacting ||
       this.dirty() ||
       this.draft.size
     ) {

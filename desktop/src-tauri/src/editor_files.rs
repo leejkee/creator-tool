@@ -10,7 +10,6 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 use tauri::{AppHandle, Manager};
-use tauri_plugin_dialog::DialogExt;
 
 type Result<T> = std::result::Result<T, DocumentError>;
 static NEXT_FILE: AtomicU64 = AtomicU64::new(0);
@@ -149,46 +148,6 @@ pub async fn scan_editor_workspace(workspace: String) -> Result<Vec<WorkspaceEnt
     })
     .await
     .map_err(|e| error("SCAN_FAILED", e))?
-}
-
-#[tauri::command]
-pub async fn choose_editor_path(
-    app: AppHandle,
-    kind: String,
-    initial: Option<String>,
-) -> Result<Option<String>> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let mut dialog = app.dialog().file();
-        if let Some(directory) = initial {
-            dialog = dialog.set_directory(directory);
-        }
-        let result = match kind.as_str() {
-            "directory" => dialog.set_title("选择工作目录").blocking_pick_folder(),
-            "image" => dialog
-                .set_title("选择本地图片")
-                .add_filter("图片", &["png", "jpg", "jpeg", "webp", "svg"])
-                .blocking_pick_file(),
-            "json" => dialog
-                .set_title("选择 JSON 模板")
-                .add_filter("JSON", &["json"])
-                .blocking_pick_file(),
-            "saveAs" => dialog
-                .set_title("文档另存为")
-                .add_filter("JSON", &["json"])
-                .set_file_name("图片.json")
-                .blocking_save_file(),
-            _ => return Err(error("INVALID_ARGUMENT", "未知的文件选择方式")),
-        };
-        result
-            .map(|p| {
-                p.into_path()
-                    .map(|p| p.to_string_lossy().into_owned())
-                    .map_err(|e| error("INVALID_PATH", e))
-            })
-            .transpose()
-    })
-    .await
-    .map_err(|e| error("DIALOG_FAILED", e))?
 }
 
 #[derive(Deserialize)]

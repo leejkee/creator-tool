@@ -1,53 +1,53 @@
 <script setup lang="ts">
 import {
   computed,
+  nextTick,
   onBeforeUnmount,
   onMounted,
-  reactive,
   ref,
   shallowRef,
+  watch,
 } from "vue";
-import EditorDialog from "./components/EditorDialog.vue";
 import PreviewPane from "./components/PreviewPane.vue";
 import ModuleInspector from "./components/ModuleInspector.vue";
-import { createEditor } from "./editor";
+import InformationEditorForm from "./components/InformationEditorForm.vue";
+import InformationFileBrowser from "./components/InformationFileBrowser.vue";
+import InformationOptions from "./components/InformationOptions.vue";
+import { useInformationArea } from "./components/useInformationArea";
+import { createEditor, createFileBrowserPort } from "./editor";
 import { protectWindowClose } from "./editor/host";
-import type { Ask, Decision, NewModuleInput } from "./editor/contracts";
+import type { NewModuleInput } from "./editor/contracts";
 import "./editor.css";
 
-const decision = shallowRef<Decision>();
-let resolveDecision: ((value: string) => void) | undefined;
-const ask: Ask = (request) =>
-  new Promise((resolve) => {
-    decision.value = request;
-    resolveDecision = resolve;
-  });
-function answer(value: string): void {
-  const resolve = resolveDecision;
-  resolveDecision = undefined;
-  decision.value = undefined;
-  resolve?.(value);
-}
-const editor = createEditor(ask);
+const {
+  decision,
+  path,
+  options,
+  pending,
+  ask,
+  choosePath,
+  chooseOption,
+  answer,
+  selectPath,
+  selectOption,
+  cancel: cancelRequest,
+} = useInformationArea();
+const editor = createEditor(ask, choosePath);
+const browser = createFileBrowserPort();
 const view = shallowRef(editor.view());
 const unsubscribe = editor.subscribe((value) => {
   view.value = value;
 });
-const modal = ref<"" | "document" | "module" | "move">("");
-const name = ref("");
+const formMode = ref<"" | "document" | "module" | "move">("");
 const template = ref("");
-const modalError = ref("");
-const form = reactive<NewModuleInput>({
-  kind: "image",
-  parentId: "",
-  row: "0",
-  column: "0",
-  width: "",
-  height: "",
-  text: "",
-});
+const formError = ref("");
+const expanded = ref(false);
+const hint = ref("");
+const lastHint = ref("");
+const information = ref<HTMLElement>();
+const hasTask = computed(() => !!formMode.value || pending.value);
 const locked = computed(
-  () => !view.value.ready || !!view.value.busy || !!decision.value,
+  () => !view.value.ready || !!view.value.busy || hasTask.value,
 );
 const workspaceName = computed(
   () =>
@@ -66,72 +66,144 @@ const warningCount = computed(
 let unlistenWindow: (() => void) | undefined;
 
 function showDocument(): void {
-  name.value = "";
   template.value = "";
-  modalError.value = "";
-  modal.value = "document";
+  formError.value = "";
+  formMode.value = "document";
 }
 function showModule(move = false): void {
-  const parents = view.value.parents;
-  form.parentId = parents.some((p) => p.id === view.value.selectedId)
-    ? view.value.selectedId
-    : (parents[0]?.id ?? "");
-  form.row = form.parentId === "$wrap" ? "1" : "0";
-  form.column = "0";
-  form.width = "";
-  form.height = "";
-  form.text = "";
-  form.kind = "image";
-  modalError.value = "";
-  modal.value = move ? "move" : "module";
+  formError.value = "";
+  formMode.value = move ? "move" : "module";
+}
+function cancelForm(): void {
+  if (!view.value.busy && !pending.value) {
+    formMode.value = "";
+    formError.value = "";
+  }
 }
 async function chooseTemplate(): Promise<void> {
   try {
     template.value = (await editor.chooseTemplate()) ?? template.value;
   } catch (error) {
-    modalError.value = String(error);
+    editor.reportError(error);
   }
 }
-async function submitModal(): Promise<void> {
-  modalError.value = "";
-  let done = false;
-  if (modal.value === "document") {
-    if (!name.value.trim()) {
-      modalError.value = "请输入文档名称";
-      return;
-    }
-    done = await editor.create(name.value, template.value || undefined);
-  } else if (modal.value === "module") {
-    done = await editor.add({ ...form });
-  } else if (modal.value === "move") {
-    if (!form.row.trim() || !form.column.trim()) {
-      modalError.value = "请填写行列位置";
-      return;
-    }
-    done = await editor.move(
-      form.parentId,
-      Number(form.row),
-      Number(form.column),
-    );
-  }
-  if (done) {
-    modal.value = "";
-  } else {
-    modalError.value = view.value.status;
+async function finishForm(action: () => Promise<boolean>): Promise<void> {
+  const previousError = formError.value;
+  formError.value = "";
+  const previousStatus = view.value.status;
+  if (await action()) {
+    formMode.value = "";
+  } else if (
+    view.value.status !== previousStatus ||
+    previousError === view.value.status
+  ) {
+    formError.value = view.value.status;
   }
 }
-function cancelModal(): void {
-  if (!locked.value) {
-    modal.value = "";
-  }
+function createDocument(name: string): Promise<void> {
+  return finishForm(() => editor.create(name, template.value || undefined));
+}
+function addModule(input: NewModuleInput): Promise<void> {
+  return finishForm(() => editor.add(input));
+}
+function moveModule(
+  parent: string,
+  row: number,
+  column: number,
+): Promise<void> {
+  return finishForm(() => editor.move(parent, row, column));
 }
 function toggleAutosave(event: Event): void {
   void editor.setAutosave((event.target as HTMLInputElement).checked);
 }
+function showHint(event: Event): void {
+  const target =
+    event.target instanceof Element
+      ? event.target.closest<HTMLElement>("[data-hint]")
+      : undefined;
+  hint.value = target?.dataset.hint ?? "";
+  if (hint.value) {
+    lastHint.value = hint.value;
+  }
+}
+function clearHint(event: Event): void {
+  const target = (event as FocusEvent | PointerEvent).relatedTarget;
+  hint.value =
+    target instanceof Element
+      ? (target.closest<HTMLElement>("[data-hint]")?.dataset.hint ?? "")
+      : "";
+}
+async function focusInformation(): Promise<void> {
+  await nextTick();
+  const tasks =
+    information.value?.querySelectorAll<HTMLElement>(".information-task");
+  const active = tasks
+    ? [...tasks].find(
+        (task) => task.getClientRects().length && !task.closest("[inert]"),
+      )
+    : undefined;
+  const first =
+    active?.querySelector<HTMLElement>(
+      "input:not([disabled]):not([readonly]), textarea:not([disabled])",
+    ) ??
+    active?.querySelector<HTMLElement>("button[data-cancel-choice]") ??
+    active?.querySelector<HTMLElement>("button:not([disabled])");
+  (first ?? information.value)?.focus();
+}
+watch(
+  hasTask,
+  (value) => {
+    editor.setInteractionPending(value);
+  },
+  { flush: "sync" },
+);
+watch(
+  () =>
+    options.value
+      ? "options"
+      : path.value
+        ? "path"
+        : decision.value
+          ? "decision"
+          : formMode.value,
+  () => {
+    hint.value = "";
+    lastHint.value = "";
+    if (hasTask.value) {
+      expanded.value = true;
+      void focusInformation();
+    }
+  },
+);
+watch(
+  () => view.value.issues,
+  (issues) => {
+    if (issues.some((issue) => issue.severity === "error")) {
+      expanded.value = true;
+    }
+  },
+);
+watch(
+  () => view.value.external,
+  (external) => {
+    if (external) {
+      expanded.value = true;
+    }
+  },
+);
 function shortcut(event: KeyboardEvent): void {
+  if (event.key === "Escape" && hasTask.value) {
+    event.preventDefault();
+    if (pending.value) {
+      cancelRequest();
+    } else {
+      cancelForm();
+    }
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
     event.preventDefault();
-    if (!modal.value && !decision.value) {
+    if (!hasTask.value) {
       if (event.shiftKey) {
         void editor.saveAs();
       } else {
@@ -143,10 +215,13 @@ function shortcut(event: KeyboardEvent): void {
 onMounted(async () => {
   window.addEventListener("keydown", shortcut);
   try {
-    unlistenWindow = await protectWindowClose(
-      editor,
-      () => !modal.value && !decision.value,
-    );
+    unlistenWindow = await protectWindowClose(editor, () => {
+      if (hasTask.value) {
+        void focusInformation();
+        return false;
+      }
+      return true;
+    });
   } catch (error) {
     editor.reportError(error);
   }
@@ -155,15 +230,22 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", shortcut);
   unlistenWindow?.();
-  answer("cancel");
+  cancelRequest();
   unsubscribe();
   editor.dispose();
 });
 </script>
 
 <template>
-  <main class="app-shell" :aria-busy="!!view.busy">
-    <aside class="workspace-sidebar">
+  <main
+    class="app-shell"
+    :aria-busy="!!view.busy"
+    @pointerover="showHint"
+    @pointerout="clearHint"
+    @focusin="showHint"
+    @focusout="clearHint"
+  >
+    <aside class="workspace-sidebar" :inert="hasTask">
       <div class="brand">
         <span class="brand-mark">▧</span>
         <div><strong>图片创作</strong><small>本地图片工作室</small></div>
@@ -179,7 +261,7 @@ onBeforeUnmount(() => {
         <span class="eyebrow">工作区文档</span
         ><button
           class="icon-button"
-          title="刷新文档列表"
+          data-hint="刷新文档列表"
           aria-label="刷新文档列表"
           :disabled="!view.preferences.workspace || locked"
           @click="editor.rescan()"
@@ -193,7 +275,7 @@ onBeforeUnmount(() => {
           :key="entry.directory"
           class="document-entry"
           :class="{ active: entry.directory === view.activeDirectory }"
-          :title="entry.directory"
+          :data-hint="entry.directory"
           :disabled="locked"
           @click="editor.open(entry)"
         >
@@ -217,7 +299,7 @@ onBeforeUnmount(() => {
         <button
           class="workspace-button"
           :disabled="locked"
-          :title="view.preferences.workspace"
+          :data-hint="view.preferences.workspace"
           @click="editor.chooseWorkspace()"
         >
           <span>▱</span
@@ -238,135 +320,225 @@ onBeforeUnmount(() => {
     </aside>
 
     <section class="main-workspace">
-      <header class="document-toolbar">
-        <div class="document-heading">
-          <span class="eyebrow">{{
-            view.activePath ? "当前文档" : "图片编辑器"
-          }}</span>
-          <div class="document-title">
-            <h1 :title="view.activePath">
-              {{ view.activeName || "你的下一张图片，从这里开始" }}
-            </h1>
-            <span
-              v-if="view.activePath"
-              class="save-indicator"
-              :class="{ unsaved: view.dirty || view.draft }"
-              >{{ fileStatus }}</span
-            >
+      <div class="workspace-content" :inert="hasTask">
+        <header class="document-toolbar">
+          <div class="document-heading">
+            <span class="eyebrow">{{
+              view.activePath ? "当前文档" : "图片编辑器"
+            }}</span>
+            <div class="document-title">
+              <h1 :data-hint="view.activePath">
+                {{ view.activeName || "你的下一张图片，从这里开始" }}
+              </h1>
+              <span
+                v-if="view.activePath"
+                class="save-indicator"
+                :class="{ unsaved: view.dirty || view.draft }"
+                >{{ fileStatus }}</span
+              >
+            </div>
           </div>
-        </div>
-        <div v-if="view.activePath" class="toolbar-actions">
-          <button
-            :disabled="locked"
-            title="Ctrl+S；仅保存已应用的修改"
-            @click="editor.save()"
-          >
-            保存</button
-          ><button :disabled="locked" @click="editor.saveAs()">另存为</button
-          ><button
-            class="primary"
-            :disabled="
-              locked ||
-              !view.frame ||
-              view.stale ||
-              view.rendering ||
-              !!view.external
-            "
-            @click="editor.exportPng()"
-          >
-            导出 PNG <span>↗</span></button
-          ><button
-            class="icon-button"
-            aria-label="关闭文档"
-            title="关闭文档"
-            :disabled="locked"
-            @click="editor.closeDocument()"
-          >
-            ×
-          </button>
-        </div>
-      </header>
-      <div v-if="view.external" class="external-banner" role="alert">
-        <div>
-          <strong>磁盘文件发生变化</strong
-          ><span>{{ view.external.message }}。本地编辑已保留。</span>
-        </div>
-        <button
-          v-if="view.external.reloadable"
-          :disabled="locked"
-          @click="editor.reloadExternal()"
-        >
-          重新加载</button
-        ><button :disabled="locked" @click="editor.saveAs()">另存为</button>
-      </div>
-      <template v-if="view.activePath">
-        <div class="editing-toolbar">
-          <span class="muted">{{ view.selectedName || "尚未选中模块" }}</span
-          ><button :disabled="locked" @click="showModule()">＋ 新增模块</button>
-        </div>
-        <div class="editor-body">
-          <PreviewPane
-            :frame="view.frame"
-            :selected="view.selectedId"
-            :stale="view.stale"
-            :rendering="view.rendering"
-            :disabled="locked"
-            @pick="(x, y) => editor.pick(x, y)"
+          <div v-if="view.activePath" class="toolbar-actions">
+            <button
+              :disabled="locked"
+              data-hint="Ctrl+S；仅保存已应用的修改"
+              @click="editor.save()"
+            >
+              保存</button
+            ><button :disabled="locked" @click="editor.saveAs()">另存为</button
+            ><button
+              class="primary"
+              :disabled="
+                locked ||
+                !view.frame ||
+                view.stale ||
+                view.rendering ||
+                !!view.external
+              "
+              @click="editor.exportPng()"
+            >
+              导出 PNG <span>↗</span></button
+            ><button
+              class="icon-button"
+              aria-label="关闭文档"
+              data-hint="关闭文档"
+              :disabled="locked"
+              @click="editor.closeDocument()"
+            >
+              ×
+            </button>
+          </div>
+        </header>
+        <template v-if="view.activePath">
+          <div class="editing-toolbar">
+            <span class="muted">{{ view.selectedName || "尚未选中模块" }}</span
             ><button :disabled="locked" @click="showModule()">
               ＋ 新增模块
-            </button></PreviewPane
+            </button>
+          </div>
+          <div class="editor-body">
+            <PreviewPane
+              :frame="view.frame"
+              :selected="view.selectedId"
+              :stale="view.stale"
+              :rendering="view.rendering"
+              :disabled="locked"
+              @pick="(x, y) => editor.pick(x, y)"
+              ><button :disabled="locked" @click="showModule()">
+                ＋ 新增模块
+              </button></PreviewPane
+            >
+            <ModuleInspector
+              :disabled="hasTask"
+              :choose="chooseOption"
+              :view="view"
+              @field="(id, value) => editor.updateField(id, value)"
+              @asset="(id) => editor.chooseAsset(id)"
+              @apply="editor.apply()"
+              @discard="editor.discardInput()"
+              @remove="editor.removeSelected()"
+              @move="showModule(true)"
+              @fonts="editor.refreshFonts()"
+            />
+          </div>
+        </template>
+        <section v-else class="welcome-panel">
+          <span class="welcome-art" aria-hidden="true">▧<i>＋</i></span>
+          <span class="eyebrow">内容 · 布局 · 图片</span>
+          <h2>把想法排成一张图片</h2>
+          <p>
+            从左侧打开已有文档，或新建一份。<br />在预览中选择模块，在右侧编辑并应用。
+          </p>
+          <button
+            v-if="!view.preferences.workspace"
+            class="primary"
+            :disabled="locked || !view.ready"
+            @click="editor.chooseWorkspace()"
           >
-          <ModuleInspector
-            :view="view"
-            @field="(id, value) => editor.updateField(id, value)"
-            @asset="(id) => editor.chooseAsset(id)"
-            @apply="editor.apply()"
-            @discard="editor.discardInput()"
-            @remove="editor.removeSelected()"
-            @move="showModule(true)"
-            @fonts="editor.refreshFonts()"
-          />
+            选择工作区 <span>↗</span>
+          </button>
+          <button
+            v-else
+            class="primary"
+            :disabled="locked"
+            @click="showDocument"
+          >
+            ＋ 新建文档
+          </button>
+          <p class="welcome-note">所有文档与素材保存在本地工作区</p>
+        </section>
+      </div>
+      <section
+        ref="information"
+        class="information-area"
+        aria-label="底部信息区域"
+        tabindex="-1"
+      >
+        <div class="information-summary">
+          <button
+            type="button"
+            class="information-toggle"
+            :aria-expanded="expanded || hasTask"
+            :disabled="hasTask"
+            @click="expanded = !expanded"
+          >
+            {{
+              hasTask ? "底部操作" : expanded ? "收起信息" : "展开信息"
+            }}</button
+          ><span
+            class="status-dot"
+            :class="{
+              'status-error': errorCount > 0,
+              'status-working': !!view.busy,
+            }"
+          ></span
+          ><span class="status-message ellipsis" role="status">{{
+            hint || view.busy || view.status
+          }}</span
+          ><button
+            v-if="view.issues.length"
+            type="button"
+            class="issue-count"
+            @click="expanded = true"
+          >
+            {{ errorCount }} 个错误 · {{ warningCount }} 个警告</button
+          ><span v-if="hasTask" class="badge">请先完成或取消底部操作</span>
         </div>
-      </template>
-      <section v-else class="welcome-panel">
-        <span class="welcome-art" aria-hidden="true">▧<i>＋</i></span>
-        <span class="eyebrow">内容 · 布局 · 图片</span>
-        <h2>把想法排成一张图片</h2>
-        <p>
-          从左侧打开已有文档，或新建一份。<br />在预览中选择模块，在右侧编辑并应用。
-        </p>
-        <button
-          v-if="!view.preferences.workspace"
-          class="primary"
-          :disabled="locked || !view.ready"
-          @click="editor.chooseWorkspace()"
-        >
-          选择工作区 <span>↗</span>
-        </button>
-        <button v-else class="primary" :disabled="locked" @click="showDocument">
-          ＋ 新建文档
-        </button>
-        <p class="welcome-note">所有文档与素材保存在本地工作区</p>
-      </section>
-      <footer class="status-bar" role="status">
-        <span
-          class="status-dot"
-          :class="{
-            'status-error': errorCount > 0,
-            'status-working': !!view.busy,
-          }"
-        ></span
-        ><span class="status-message ellipsis">{{
-          view.busy || view.status
-        }}</span>
-        <details v-if="view.issues.length" class="diagnostics">
-          <summary>
-            {{ errorCount ? `${errorCount} 个错误` : ""
-            }}{{ errorCount && warningCount ? " · " : ""
-            }}{{ warningCount ? `${warningCount} 个警告` : "" }}
-          </summary>
-          <div class="diagnostic-list">
-            <h3>诊断信息</h3>
+        <div v-show="expanded || hasTask" class="information-content">
+          <InformationOptions
+            v-if="options"
+            :key="options.label"
+            :request="options"
+            :disabled="!!view.busy"
+            @select="selectOption"
+            @cancel="cancelRequest"
+          />
+          <InformationFileBrowser
+            v-else-if="path"
+            :request="path"
+            :browser="browser"
+            :blocked="!!view.busy"
+            @select="selectPath"
+            @cancel="cancelRequest"
+          />
+          <section
+            v-else-if="decision"
+            class="information-task"
+            aria-label="待确认操作"
+          >
+            <header class="information-heading">
+              <h2>{{ decision.title }}</h2>
+            </header>
+            <p class="decision-message">{{ decision.message }}</p>
+            <div class="information-actions">
+              <button
+                v-for="choice in decision.choices"
+                :key="choice.value"
+                type="button"
+                :class="{ primary: choice.primary, danger: choice.danger }"
+                :data-cancel-choice="choice.value === 'cancel' ? '' : undefined"
+                @click="answer(choice.value)"
+              >
+                {{ choice.label }}
+              </button>
+            </div>
+          </section>
+          <InformationEditorForm
+            v-if="formMode"
+            v-show="!pending"
+            :key="formMode"
+            :mode="formMode"
+            :view="view"
+            :choose="chooseOption"
+            :template="template"
+            :error="formError"
+            @cancel="cancelForm"
+            @template="chooseTemplate"
+            @clear-template="template = ''"
+            @create="createDocument"
+            @add="addModule"
+            @move="moveModule"
+          />
+          <section v-if="!hasTask" class="information-messages">
+            <p v-if="hint || lastHint" class="information-hint">
+              {{ hint || lastHint }}
+            </p>
+            <p class="information-status">{{ view.busy || view.status }}</p>
+            <div v-if="view.external" class="external-information" role="alert">
+              <strong>磁盘文件发生变化</strong>
+              <p>{{ view.external.message }}。本地编辑已保留。</p>
+              <div class="information-actions">
+                <button
+                  v-if="view.external.reloadable"
+                  :disabled="locked"
+                  @click="editor.reloadExternal()"
+                >
+                  重新加载</button
+                ><button :disabled="locked" @click="editor.saveAs()">
+                  另存为
+                </button>
+              </div>
+            </div>
             <div
               v-for="(issue, index) in view.issues"
               :key="index"
@@ -379,150 +551,12 @@ onBeforeUnmount(() => {
               <p>{{ issue.message }}</p>
               <small v-if="issue.location">{{ issue.location }}</small>
             </div>
-          </div>
-        </details>
-        <span v-if="view.draft" class="muted">输入需应用后才会保存、导出</span>
-      </footer>
+            <p v-if="view.draft" class="field-hint">
+              右侧仍有未应用输入；保存和导出只使用已应用内容。
+            </p>
+          </section>
+        </div>
+      </section>
     </section>
   </main>
-
-  <EditorDialog
-    :open="!!modal"
-    :title="
-      modal === 'document'
-        ? '新建文档'
-        : modal === 'move'
-          ? '调整模块位置'
-          : '新增模块'
-    "
-    @cancel="cancelModal"
-  >
-    <form class="dialog-form" @submit.prevent="submitModal">
-      <fieldset :disabled="locked">
-        <template v-if="modal === 'document'"
-          ><label for="document-name">文档名称</label
-          ><input
-            id="document-name"
-            v-model="name"
-            placeholder="例如：角色配装卡片"
-            autofocus
-            autocomplete="off"
-          />
-          <p class="field-hint">在工作区创建同名目录和 JSON 文件。</p>
-          <label for="document-template">JSON 模板（可选）</label>
-          <div class="asset-input">
-            <input
-              id="document-template"
-              :value="template"
-              placeholder="从空白布局开始"
-              readonly
-            /><button type="button" @click="chooseTemplate">选择</button
-            ><button v-if="template" type="button" @click="template = ''">
-              清除
-            </button>
-          </div></template
-        >
-        <template v-else>
-          <template v-if="modal === 'module'"
-            ><label for="module-kind">模块内容</label
-            ><select id="module-kind" v-model="form.kind">
-              <option value="image">图片</option>
-              <option value="text">文本框</option>
-              <option value="rect">矩形</option>
-              <option value="layout">布局模块</option>
-            </select></template
-          >
-          <label for="module-parent">父模块</label
-          ><select id="module-parent" v-model="form.parentId">
-            <option
-              v-for="parent in view.parents"
-              :key="parent.id"
-              :value="parent.id"
-            >
-              {{ parent.label }}
-            </option>
-          </select>
-          <div v-if="form.parentId" class="input-pair">
-            <div>
-              <label for="module-row">行（从 0 开始）</label
-              ><input id="module-row" v-model="form.row" inputmode="numeric" />
-            </div>
-            <div>
-              <label for="module-column">列（从 0 开始）</label
-              ><input
-                id="module-column"
-                v-model="form.column"
-                inputmode="numeric"
-              />
-            </div>
-          </div>
-          <p v-if="form.parentId" class="field-hint">
-            超出网格时自动扩展；已有模块的位置保持不变。
-          </p>
-          <div
-            v-if="modal === 'module' && form.kind !== 'layout'"
-            class="input-pair"
-          >
-            <div>
-              <label for="module-width">宽度（px）</label
-              ><input
-                id="module-width"
-                v-model="form.width"
-                inputmode="numeric"
-                placeholder="必填"
-              />
-            </div>
-            <div>
-              <label for="module-height">高度（px）</label
-              ><input
-                id="module-height"
-                v-model="form.height"
-                inputmode="numeric"
-                placeholder="必填"
-              />
-            </div>
-          </div>
-          <template v-if="modal === 'module' && form.kind === 'text'"
-            ><label for="module-text">文字内容</label
-            ><textarea
-              id="module-text"
-              v-model="form.text"
-              rows="3"
-              placeholder="添加文字"
-            ></textarea>
-          </template>
-        </template>
-      </fieldset>
-      <p v-if="modalError" class="field-error" role="alert">{{ modalError }}</p>
-      <div class="dialog-actions">
-        <button type="button" :disabled="locked" @click="cancelModal">
-          取消</button
-        ><button class="primary" type="submit" :disabled="locked">
-          {{
-            modal === "document"
-              ? "创建文档"
-              : modal === "move"
-                ? "移动并应用"
-                : "添加并应用"
-          }}
-        </button>
-      </div>
-    </form>
-  </EditorDialog>
-  <EditorDialog
-    :open="!!decision"
-    :title="decision?.title || ''"
-    @cancel="answer('cancel')"
-    ><p class="decision-message">{{ decision?.message }}</p>
-    <div class="dialog-actions decision-actions">
-      <button
-        v-for="choice in decision?.choices"
-        :key="choice.value"
-        :class="{ primary: choice.primary, danger: choice.danger }"
-        @click="answer(choice.value)"
-      >
-        {{ choice.label }}
-      </button>
-    </div></EditorDialog
-  >
 </template>

@@ -104,6 +104,40 @@ export interface Decision {
 }
 export type Ask = (decision: Decision) => Promise<string>;
 
+export type PathKind = "directory" | "image" | "json" | "saveAs";
+export type ChoosePath = (
+  kind: PathKind,
+  initial?: string,
+) => Promise<string | undefined>;
+export interface PathRequest {
+  kind: PathKind;
+  initial?: string;
+}
+export interface DirectoryEntry {
+  name: string;
+  path: string;
+  directory: boolean;
+}
+export interface DirectoryListing {
+  directory: string;
+  parent?: string;
+  roots: readonly { label: string; path: string }[];
+  entries: readonly DirectoryEntry[];
+  warnings: readonly string[];
+}
+export interface FileBrowserPort {
+  browse(kind: PathKind, path?: string): Promise<DirectoryListing>;
+  resolve(kind: PathKind, directory: string, filename: string): Promise<string>;
+}
+export interface OptionRequest {
+  label: string;
+  value: string;
+  options: readonly FieldOption[];
+}
+export type ChooseOption = (
+  request: OptionRequest,
+) => Promise<string | undefined>;
+
 export interface DesktopPort {
   available(): boolean;
   loadPreferences(): Promise<AppPreferences>;
