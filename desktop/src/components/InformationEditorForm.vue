@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import InformationChoice from "./InformationChoice.vue";
+import { displayPath } from "./pathDisplay";
 import type {
   ChooseOption,
   EditorView,
@@ -97,7 +98,7 @@ function submit(): void {
             <div class="asset-input">
               <input
                 id="new-template"
-                :value="template"
+                :value="displayPath(template)"
                 placeholder="从空白布局开始"
                 readonly
               /><button type="button" @click="emit('template')">选择</button
@@ -185,7 +186,7 @@ function submit(): void {
         超出网格时自动扩展；已有模块的位置保持不变。
       </p>
       <p v-if="localError || error" class="field-error" role="alert">
-        {{ localError || error }}
+        {{ displayPath(localError || error) }}
       </p>
       <div class="information-actions">
         <button class="primary" type="submit" :disabled="!!view.busy">

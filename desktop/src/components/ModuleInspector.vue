@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import InformationChoice from "./InformationChoice.vue";
+import { displayPath } from "./pathDisplay";
 import type {
   ChooseOption,
   EditorField,
@@ -116,7 +117,11 @@ async function chooseFont(field: EditorField): Promise<void> {
             >
               <input
                 :id="`property-${field.id}`"
-                :value="field.value"
+                :value="
+                  field.kind === 'asset'
+                    ? displayPath(field.value)
+                    : field.value
+                "
                 :placeholder="field.placeholder"
                 :inputmode="field.kind === 'number' ? 'decimal' : 'text'"
                 :aria-invalid="!!field.error"
@@ -148,7 +153,7 @@ async function chooseFont(field: EditorField): Promise<void> {
               刷新本机字体列表
             </button>
             <p v-if="field.error" class="field-error" role="alert">
-              {{ field.error }}
+              {{ displayPath(field.error) }}
             </p>
           </div>
         </fieldset>

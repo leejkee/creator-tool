@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
+import { displayPath } from "./pathDisplay";
 import type {
   DirectoryListing,
   FileBrowserPort,
@@ -14,6 +15,18 @@ const emit = defineEmits<{ select: [path: string]; cancel: [] }>();
 const listing = shallowRef<DirectoryListing>();
 const address = ref(props.request.initial ?? "");
 const filename = ref(props.request.kind === "saveAs" ? "图片.json" : "");
+const displayedAddress = computed({
+  get: () => displayPath(address.value),
+  set: (value: string) => {
+    address.value = value;
+  },
+});
+const displayedFilename = computed({
+  get: () => displayPath(filename.value),
+  set: (value: string) => {
+    filename.value = value;
+  },
+});
 const search = ref("");
 const error = ref("");
 const busy = ref(false);
@@ -126,7 +139,7 @@ onBeforeUnmount(() => {
       <label for="browse-address">目录</label
       ><input
         id="browse-address"
-        v-model="address"
+        v-model="displayedAddress"
         :disabled="busy || blocked"
         placeholder="输入完整目录路径"
         autocomplete="off"
@@ -145,7 +158,7 @@ onBeforeUnmount(() => {
         :key="root.path"
         type="button"
         :disabled="busy || blocked"
-        :data-hint="root.path"
+        :data-hint="displayPath(root.path)"
         @click="browse(root.path)"
       >
         {{ root.label }}</button
@@ -153,7 +166,7 @@ onBeforeUnmount(() => {
         v-if="request.initial"
         type="button"
         :disabled="busy || blocked"
-        :data-hint="request.initial"
+        :data-hint="displayPath(request.initial)"
         @click="browse(request.initial)"
       >
         起始目录</button
@@ -173,7 +186,7 @@ onBeforeUnmount(() => {
         type="button"
         :disabled="busy || blocked"
         :class="{ selected: !entry.directory && filename === entry.name }"
-        :data-hint="entry.path"
+        :data-hint="displayPath(entry.path)"
         @click="entry.directory ? browse(entry.path) : (filename = entry.name)"
         @dblclick="!entry.directory && select()"
       >
@@ -191,11 +204,11 @@ onBeforeUnmount(() => {
         }}</label
         ><input
           id="browse-filename"
-          v-model="filename"
+          v-model="displayedFilename"
           :disabled="busy || blocked"
           autocomplete="off" /></template
       ><span v-else class="path-current"
-        >当前目录：{{ listing?.directory || address }}</span
+        >当前目录：{{ displayPath(listing?.directory || address) }}</span
       ><button
         type="submit"
         class="primary"
@@ -210,9 +223,11 @@ onBeforeUnmount(() => {
         }}
       </button>
     </form>
-    <p v-if="error" class="field-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="field-error" role="alert">
+      {{ displayPath(error) }}
+    </p>
     <p v-for="warning in listing?.warnings" :key="warning" class="field-hint">
-      {{ warning }}
+      {{ displayPath(warning) }}
     </p>
   </section>
 </template>

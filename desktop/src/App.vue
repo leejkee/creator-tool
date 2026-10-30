@@ -13,6 +13,7 @@ import ModuleInspector from "./components/ModuleInspector.vue";
 import InformationEditorForm from "./components/InformationEditorForm.vue";
 import InformationFileBrowser from "./components/InformationFileBrowser.vue";
 import InformationOptions from "./components/InformationOptions.vue";
+import { displayPath } from "./components/pathDisplay";
 import { useInformationArea } from "./components/useInformationArea";
 import { createEditor, createFileBrowserPort } from "./editor";
 import { protectWindowClose } from "./editor/host";
@@ -275,7 +276,7 @@ onBeforeUnmount(() => {
           :key="entry.directory"
           class="document-entry"
           :class="{ active: entry.directory === view.activeDirectory }"
-          :data-hint="entry.directory"
+          :data-hint="displayPath(entry.directory)"
           :disabled="locked"
           @click="editor.open(entry)"
         >
@@ -299,7 +300,7 @@ onBeforeUnmount(() => {
         <button
           class="workspace-button"
           :disabled="locked"
-          :data-hint="view.preferences.workspace"
+          :data-hint="displayPath(view.preferences.workspace)"
           @click="editor.chooseWorkspace()"
         >
           <span>▱</span
@@ -327,7 +328,7 @@ onBeforeUnmount(() => {
               view.activePath ? "当前文档" : "图片编辑器"
             }}</span>
             <div class="document-title">
-              <h1 :data-hint="view.activePath">
+              <h1 :data-hint="displayPath(view.activePath)">
                 {{ view.activeName || "你的下一张图片，从这里开始" }}
               </h1>
               <span
@@ -453,7 +454,7 @@ onBeforeUnmount(() => {
             }"
           ></span
           ><span class="status-message ellipsis" role="status">{{
-            hint || view.busy || view.status
+            displayPath(hint || view.busy || view.status)
           }}</span
           ><button
             v-if="view.issues.length"
@@ -489,7 +490,7 @@ onBeforeUnmount(() => {
             <header class="information-heading">
               <h2>{{ decision.title }}</h2>
             </header>
-            <p class="decision-message">{{ decision.message }}</p>
+            <p class="decision-message">{{ displayPath(decision.message) }}</p>
             <div class="information-actions">
               <button
                 v-for="choice in decision.choices"
@@ -521,12 +522,14 @@ onBeforeUnmount(() => {
           />
           <section v-if="!hasTask" class="information-messages">
             <p v-if="hint || lastHint" class="information-hint">
-              {{ hint || lastHint }}
+              {{ displayPath(hint || lastHint) }}
             </p>
-            <p class="information-status">{{ view.busy || view.status }}</p>
+            <p class="information-status">
+              {{ displayPath(view.busy || view.status) }}
+            </p>
             <div v-if="view.external" class="external-information" role="alert">
               <strong>磁盘文件发生变化</strong>
-              <p>{{ view.external.message }}。本地编辑已保留。</p>
+              <p>{{ displayPath(view.external.message) }}。本地编辑已保留。</p>
               <div class="information-actions">
                 <button
                   v-if="view.external.reloadable"
@@ -548,8 +551,10 @@ onBeforeUnmount(() => {
               <strong>{{
                 issue.severity === "error" ? "错误" : "警告"
               }}</strong>
-              <p>{{ issue.message }}</p>
-              <small v-if="issue.location">{{ issue.location }}</small>
+              <p>{{ displayPath(issue.message) }}</p>
+              <small v-if="issue.location">{{
+                displayPath(issue.location)
+              }}</small>
             </div>
             <p v-if="view.draft" class="field-hint">
               右侧仍有未应用输入；保存和导出只使用已应用内容。
