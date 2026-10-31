@@ -1,6 +1,6 @@
 mod documents;
+mod editor_dialogs;
 mod editor_files;
-mod editor_paths;
 mod fonts;
 mod render_assets;
 
@@ -8,6 +8,7 @@ mod render_assets;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(documents::Documents::default())
         .setup(|app| {
             documents::start_watcher(app.handle().clone());
@@ -17,8 +18,7 @@ pub fn run() {
             editor_files::load_editor_config,
             editor_files::save_editor_config,
             editor_files::scan_editor_workspace,
-            editor_paths::browse_editor_directory,
-            editor_paths::resolve_editor_selection,
+            editor_dialogs::choose_editor_path,
             editor_files::save_editor_document,
             editor_files::editor_png_destination,
             editor_files::write_editor_png,

@@ -833,82 +833,10 @@ button.information-choice[aria-invalid="true"] {
 .option-list button {
   font-size: 12px;
 }
-.option-list button.selected,
-.path-entries button.selected {
+.option-list button.selected {
   border-color: #72a78a;
   background: #edf6ef;
   color: #267653;
-}
-.path-address,
-.path-submit {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.path-address label,
-.path-submit label {
-  font-size: 11px;
-  color: #7a8e80;
-  flex-shrink: 0;
-}
-.path-address input,
-.path-submit input {
-  flex: 1;
-  min-width: 0;
-}
-.path-address button,
-.path-submit button {
-  flex-shrink: 0;
-}
-.path-locations {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0;
-}
-.path-locations button {
-  padding: 5px 10px;
-  font-size: 11px;
-}
-.path-locations input {
-  margin-left: auto;
-  width: 200px;
-  padding: 5px 8px;
-  font-size: 11px;
-}
-.path-entries {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
-  gap: 5px;
-  max-height: 160px;
-  min-height: 45px;
-  overflow-y: auto;
-  padding: 3px 0;
-  margin-bottom: 12px;
-}
-.path-entries button {
-  text-align: left;
-  padding: 8px 10px;
-  overflow-wrap: anywhere;
-  font-size: 12px;
-}
-.path-entries button > span {
-  margin-right: 6px;
-  color: #88a493;
-}
-.path-entries small {
-  display: block;
-  margin-top: 4px;
-  color: #95a69b;
-  font-size: 10px;
-}
-.path-current {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-size: 11px;
-  color: #718b79;
 }
 [inert] {
   cursor: default;

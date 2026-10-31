@@ -5,6 +5,7 @@ import type {
   EditorIssue,
   EditorView,
   NewModuleInput,
+  PathKind,
   RenderOutcome,
   RendererPort,
   StoredFile,
@@ -63,6 +64,7 @@ export class EditorApplication {
   private fonts: readonly string[] = [];
   private asking = false;
   private interacting = false;
+  private choosingPath = false;
   private autoReloadAttempt = "";
   private readonly ask: Ask;
   constructor(
@@ -114,6 +116,7 @@ export class EditorApplication {
       frame: this.shown?.frame,
       stale: !!this.shown?.frame && this.shown !== this.outcome,
       rendering: this.rendering,
+      choosingPath: this.choosingPath,
       busy: this.busy,
       status: this.status,
       issues: this.issues,
@@ -154,6 +157,35 @@ export class EditorApplication {
       setTimeout(() => {
         this.maybeReload();
       }, 0);
+    }
+  }
+  private async choosePath(
+    kind: PathKind,
+    initial?: string,
+  ): Promise<string | undefined> {
+    if (this.choosingPath || this.busy || !this.desktop.available()) {
+      return undefined;
+    }
+    this.choosingPath = true;
+    this.emit();
+    try {
+      const path = await this.desktop.choose(kind, initial);
+      // Autosave may finish after the native dialog closes. Keep its result
+      // pending until the working copy can safely accept the selected path.
+      if (path && this.busy) {
+        await new Promise<void>((resolve) => {
+          const unsubscribe = this.subscribe((view) => {
+            if (!view.busy) {
+              unsubscribe();
+              resolve();
+            }
+          });
+        });
+      }
+      return path;
+    } finally {
+      this.choosingPath = false;
+      this.emit();
     }
   }
   private async perform(
@@ -226,7 +258,7 @@ export class EditorApplication {
       return;
     }
     try {
-      const workspace = await this.desktop.choose(
+      const workspace = await this.choosePath(
         "directory",
         this.preferences.workspace,
       );
@@ -279,24 +311,14 @@ export class EditorApplication {
     }
     let path = entry.preferred;
     if (!path) {
-      path = await this.ask({
-        title: "选择要打开的 JSON",
-        message: `“${entry.name}”中有多个 JSON，且没有同名文件。`,
-        choices: [
-          ...entry.candidates.map((value) => ({
-            value,
-            label: filename(value),
-          })),
-          { value: "cancel", label: "取消" },
-        ],
-      });
+      try {
+        path = await this.choosePath("document", entry.directory);
+      } catch (error) {
+        this.fail(error);
+        return;
+      }
     }
-    if (
-      !path ||
-      path === "cancel" ||
-      path === this.file?.path ||
-      !(await this.prepareLeave())
-    ) {
+    if (!path || path === this.file?.path || !(await this.prepareLeave())) {
       return;
     }
     await this.perform("正在打开文档…", async () => {
@@ -336,7 +358,7 @@ export class EditorApplication {
     });
   }
   async chooseTemplate(): Promise<string | undefined> {
-    return this.desktop.choose("json", this.preferences.workspace);
+    return this.choosePath("json", this.preferences.workspace);
   }
   private load(file: StoredFile): void {
     this.reset();
@@ -468,7 +490,7 @@ export class EditorApplication {
   }
   async chooseAsset(id: string): Promise<void> {
     try {
-      const path = await this.desktop.choose("image", this.file?.directory);
+      const path = await this.choosePath("image", this.file?.directory);
       if (path) {
         this.updateField(id, path);
       }
@@ -721,10 +743,7 @@ export class EditorApplication {
       return;
     }
     try {
-      const destination = await this.desktop.choose(
-        "saveAs",
-        this.file.directory,
-      );
+      const destination = await this.choosePath("saveAs", this.file.directory);
       if (destination) {
         await this.save(destination);
       }

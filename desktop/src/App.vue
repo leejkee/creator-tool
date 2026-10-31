@@ -11,30 +11,25 @@ import {
 import PreviewPane from "./components/PreviewPane.vue";
 import ModuleInspector from "./components/ModuleInspector.vue";
 import InformationEditorForm from "./components/InformationEditorForm.vue";
-import InformationFileBrowser from "./components/InformationFileBrowser.vue";
 import InformationOptions from "./components/InformationOptions.vue";
 import { displayPath } from "./components/pathDisplay";
 import { useInformationArea } from "./components/useInformationArea";
-import { createEditor, createFileBrowserPort } from "./editor";
+import { createEditor } from "./editor";
 import { protectWindowClose } from "./editor/host";
 import type { NewModuleInput } from "./editor/contracts";
 import "./editor.css";
 
 const {
   decision,
-  path,
   options,
   pending,
   ask,
-  choosePath,
   chooseOption,
   answer,
-  selectPath,
   selectOption,
   cancel: cancelRequest,
 } = useInformationArea();
-const editor = createEditor(ask, choosePath);
-const browser = createFileBrowserPort();
+const editor = createEditor(ask);
 const view = shallowRef(editor.view());
 const unsubscribe = editor.subscribe((value) => {
   view.value = value;
@@ -46,7 +41,9 @@ const expanded = ref(false);
 const hint = ref("");
 const lastHint = ref("");
 const information = ref<HTMLElement>();
-const hasTask = computed(() => !!formMode.value || pending.value);
+const hasTask = computed(
+  () => !!formMode.value || pending.value || view.value.choosingPath,
+);
 const locked = computed(
   () => !view.value.ready || !!view.value.busy || hasTask.value,
 );
@@ -76,7 +73,7 @@ function showModule(move = false): void {
   formMode.value = move ? "move" : "module";
 }
 function cancelForm(): void {
-  if (!view.value.busy && !pending.value) {
+  if (!view.value.busy && !pending.value && !view.value.choosingPath) {
     formMode.value = "";
     formError.value = "";
   }
@@ -162,7 +159,7 @@ watch(
   () =>
     options.value
       ? "options"
-      : path.value
+      : view.value.choosingPath
         ? "path"
         : decision.value
           ? "decision"
@@ -170,7 +167,7 @@ watch(
   () => {
     hint.value = "";
     lastHint.value = "";
-    if (hasTask.value) {
+    if (hasTask.value && !view.value.choosingPath) {
       expanded.value = true;
       void focusInformation();
     }
@@ -193,6 +190,9 @@ watch(
   },
 );
 function shortcut(event: KeyboardEvent): void {
+  if (view.value.choosingPath) {
+    return;
+  }
   if (event.key === "Escape" && hasTask.value) {
     event.preventDefault();
     if (pending.value) {
@@ -218,7 +218,9 @@ onMounted(async () => {
   try {
     unlistenWindow = await protectWindowClose(editor, () => {
       if (hasTask.value) {
-        void focusInformation();
+        if (!view.value.choosingPath) {
+          void focusInformation();
+        }
         return false;
       }
       return true;
@@ -444,7 +446,13 @@ onBeforeUnmount(() => {
             @click="expanded = !expanded"
           >
             {{
-              hasTask ? "底部操作" : expanded ? "收起信息" : "展开信息"
+              view.choosingPath
+                ? "系统文件选择"
+                : hasTask
+                  ? "底部操作"
+                  : expanded
+                    ? "收起信息"
+                    : "展开信息"
             }}</button
           ><span
             class="status-dot"
@@ -463,7 +471,11 @@ onBeforeUnmount(() => {
             @click="expanded = true"
           >
             {{ errorCount }} 个错误 · {{ warningCount }} 个警告</button
-          ><span v-if="hasTask" class="badge">请先完成或取消底部操作</span>
+          ><span v-if="hasTask" class="badge">{{
+            view.choosingPath
+              ? "请在系统窗口中完成选择或取消"
+              : "请先完成或取消底部操作"
+          }}</span>
         </div>
         <div v-show="expanded || hasTask" class="information-content">
           <InformationOptions
@@ -472,14 +484,6 @@ onBeforeUnmount(() => {
             :request="options"
             :disabled="!!view.busy"
             @select="selectOption"
-            @cancel="cancelRequest"
-          />
-          <InformationFileBrowser
-            v-else-if="path"
-            :request="path"
-            :browser="browser"
-            :blocked="!!view.busy"
-            @select="selectPath"
             @cancel="cancelRequest"
           />
           <section
@@ -506,7 +510,7 @@ onBeforeUnmount(() => {
           </section>
           <InformationEditorForm
             v-if="formMode"
-            v-show="!pending"
+            v-show="!pending && !view.choosingPath"
             :key="formMode"
             :mode="formMode"
             :view="view"

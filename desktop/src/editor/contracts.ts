@@ -86,6 +86,7 @@ export interface EditorView {
   frame?: PreviewView;
   stale: boolean;
   rendering: boolean;
+  choosingPath: boolean;
   busy: string;
   status: string;
   issues: readonly EditorIssue[];
@@ -104,31 +105,11 @@ export interface Decision {
 }
 export type Ask = (decision: Decision) => Promise<string>;
 
-export type PathKind = "directory" | "image" | "json" | "saveAs";
+export type PathKind = "directory" | "image" | "json" | "document" | "saveAs";
 export type ChoosePath = (
   kind: PathKind,
   initial?: string,
 ) => Promise<string | undefined>;
-export interface PathRequest {
-  kind: PathKind;
-  initial?: string;
-}
-export interface DirectoryEntry {
-  name: string;
-  path: string;
-  directory: boolean;
-}
-export interface DirectoryListing {
-  directory: string;
-  parent?: string;
-  roots: readonly { label: string; path: string }[];
-  entries: readonly DirectoryEntry[];
-  warnings: readonly string[];
-}
-export interface FileBrowserPort {
-  browse(kind: PathKind, path?: string): Promise<DirectoryListing>;
-  resolve(kind: PathKind, directory: string, filename: string): Promise<string>;
-}
 export interface OptionRequest {
   label: string;
   value: string;
@@ -143,10 +124,7 @@ export interface DesktopPort {
   loadPreferences(): Promise<AppPreferences>;
   savePreferences(value: AppPreferences): Promise<void>;
   scan(workspace: string): Promise<WorkspaceItem[]>;
-  choose(
-    kind: "directory" | "image" | "json" | "saveAs",
-    initial?: string,
-  ): Promise<string | undefined>;
+  choose: ChoosePath;
   open(path: string): Promise<StoredFile>;
   create(
     workspace: string,
