@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="574" height="34" viewBox="0 0 574 34">
+  <title>Tauri 2 · Vue 3 · TypeScript · Rust · Canvas</title>
+  <g fill="#f4f7f5" stroke="#dce5df">
+    <rect x=".5" y=".5" width="104" height="33" rx="7"/>
+    <rect x="114.5" y=".5" width="96" height="33" rx="7"/>
+    <rect x="220.5" y=".5" width="130" height="33" rx="7"/>
+    <rect x="360.5" y=".5" width="86" height="33" rx="7"/>
+    <rect x="456.5" y=".5" width="117" height="33" rx="7"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="600" fill="#26362f">
+    <text x="37" y="22">Tauri 2</text>
+    <text x="151" y="22">Vue 3</text>
+    <text x="257" y="22">TypeScript</text>
+    <text x="397" y="22">Rust</text>
+    <text x="493" y="22">Canvas</text>
+  </g>
+  <circle cx="22" cy="17" r="5" fill="#eaa828"/>
+  <circle cx="136" cy="17" r="5" fill="#42b883"/>
+  <circle cx="242" cy="17" r="5" fill="#3178c6"/>
+  <circle cx="382" cy="17" r="5" fill="#625348"/>
+  <circle cx="478" cy="17" r="5" fill="#267653"/>
+</svg>

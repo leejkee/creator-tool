@@ -1,19 +1,38 @@
-## Reference
+## 需求入口
 
-- development docs: @docs/dev.md
+- 架构、职责和当前交付范围：@docs/architecture.md
+- 图片 JSON、文档会话和文件工作流：@docs/document.md
+- 渲染参数、默认值、布局、输出和诊断：@docs/rendering.md
+- 素材、字体、处理链和 Style / 模块资源：@docs/resources.md
+- 应用介绍与用法：@README.md
+- 开发环境、构建和检查命令：@docs/development.md
 
-## First version
+先读架构，再按任务读取对应需求；不默认加载全部历史材料。
 
-- Python package: `image_create_tool`. GUI, service and renderer are separate modules in one process.
-- Use the workspace `.venv/Scripts/python.exe`. Run `-m image_create_tool open --project <workdir>` for GUI, `render --project <workdir> --output <png>` for headless production rendering.
-- Edit only the work directory's `pjt.json`. Required marker: `image-create-tool-version: "v0.0.1"`. Default directories: `assets/`, `outputs/`.
-- Material names can be supplied with `assetQuery: {"name": "芈月"}`. Run `assets search --project <workdir> --name <name>` rather than manually searching absolute paths.
-- Supported elements: `text`, `image`, `rect`, `group`, `itemRow`. Use stable IDs; `itemRow` has separately editable `:text` and `:image` child IDs.
-- Do not add strategic recommendations or change the user's decisions without an explicit request. Preserve original notes in `sourceNotes`.
-- Verify with `validate`, then `render`. Missing assets, invalid crop, font errors and content overflow block final export.
-- Acceptance workdir is `tool_test/`; use the copied resources there, and use old project images only as reference. Never run the old rendering script as the new application test.
+## 开发范围与职责
 
+- 开发以 `desktop/` 的 Tauri 核心实现及现行需求为基础。GUI 的当前文档工作副本及未保存编辑由 TS 管理；Rust 负责可靠读写、保存基线、身份与版本及外部文件保护。TS 渲染层负责业务校验、布局和 Web 图像合成，预览与导出共用逻辑。
+- GUI 组件通过编辑应用层和适配边界使用文档、Engine 能力，不直接绑定图片 JSON 字段路径或 Engine 内部类型。未保存编辑不逐次调用 Rust 的 JSON 文件 I/O；手动保存及已确认的 autosave 规则见文档需求。
+- 文件能读写不等于可以渲染；不要把渲染参数业务校验重新放进 Rust 文档读写流程。
+- 图片 JSON 是用户内容及显式配置；默认值、计算布局和渲染结果不回写源文档。Style 的主动应用遵循资源需求。
+- 需求文档不表示功能已完成。实现差异必须明确报告，不能静默修改需求来迁就代码。
+- `tool_test/` 仅保留原始素材及来源；`acceptance/` 保留原始笔记及来源说明。它们不是当前需求来源，仅在核对内容或素材时按需读取。
+- 未明确要求时，不新增攻略结论、不改变用户推荐、不删减条件，保留完整 `sourceNotes`、实际图文和稳定 ID。
+- 素材只使用明确提供的本地引用，不搜索或猜测替代路径。验收使用工作区素材副本，不运行旧绘图脚本代替新应用验收，不改用户全局资源或配置。
 
-## todo
+## 文档维护
 
-制作模板用于后续使用
+- 四份需求文档分别维护自己的规则；跨主题使用链接，不复制参数表或维护另一份默认值清单。
+- 文档写明职责、数据协议、可观察行为、默认值、错误处理和验收条件；不堆叠源码目录、函数清单、机器专用配置和历史检查日志。
+- 新增需求先明确行为和范围，再更新所属文档。未明确的产品选择不能伪装成已确认需求；常规实现方式由开发者在现有约束内选择。
+- README 面向使用者，介绍应用、主要功能、界面和用法；开发环境与检查命令集中在 `docs/development.md`。不在 README 维护开发日志、迁移记录或另一套需求参数表。
+- 文档变更检查链接、规则唯一性、冲突和遗漏；不为纯文档或格式调整新增测试。
+
+## 代码与检查
+
+- TypeScript（含 Vue 中的 TS）采用 `desktop/.prettierrc.json`：两空格缩进、双引号、分号。
+- `if` / `else`、`for`、`while`、`do` 的语句体必须使用大括号并换行，即使只有一条语句；禁止将 `if` 条件与执行语句写在同一行。
+- 修改 `desktop/` 的 TypeScript / Vue 后，在 `desktop/` 下运行 `npm run fix` 和 `npm run check`。
+- Rust 修改执行相关工程的格式、编译、Clippy 及现有适用检查；不把未执行的检查描述为通过。
+- 未经用户明确要求，不新增或修改测试代码。
+- 当前 Canvas Engine 开发阶段按用户要求不新增、修改或运行测试；测试由用户后续安排。格式、静态检查和构建仍须执行，不将其描述为渲染验收。

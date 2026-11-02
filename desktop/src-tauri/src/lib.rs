@@ -1,0 +1,49 @@
+mod documents;
+mod editor_dialogs;
+mod editor_files;
+mod editor_paths;
+mod fonts;
+mod render_assets;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .manage(documents::Documents::default())
+        .setup(|app| {
+            documents::start_watcher(app.handle().clone());
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            editor_files::load_editor_config,
+            editor_files::save_editor_config,
+            editor_files::validate_editor_workspace,
+            editor_files::scan_editor_workspace,
+            editor_files::open_editor_document,
+            editor_dialogs::choose_editor_path,
+            editor_files::save_editor_document,
+            editor_files::editor_png_destination,
+            editor_files::write_editor_png,
+            fonts::list_local_font_families,
+            render_assets::read_render_asset,
+            render_assets::get_render_asset_version,
+            documents::open_document,
+            documents::create_document,
+            documents::save_document_as,
+            documents::get_document,
+            documents::list_documents,
+            documents::replace_document,
+            documents::patch_document_node,
+            documents::set_module_layout,
+            documents::set_module_position,
+            documents::apply_module_style,
+            documents::apply_document_style,
+            documents::save_document,
+            documents::check_document_file,
+            documents::reload_document,
+            documents::close_document,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

@@ -1,0 +1,135 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Validate release version
+    runs-on: windows-2022
+    timeout-minutes: 10
+    outputs:
+      commit: ${{ steps.checkout.outputs.commit }}
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      installer_name: ${{ steps.version.outputs.installer_name }}
+    steps:
+      - uses: actions/checkout@v7
+        id: checkout
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check tag and application versions
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: ./.github/scripts/validate-release.ps1 -Tag $env:RELEASE_TAG
+
+  checks:
+    name: Check release commit
+    needs: prepare
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.prepare.outputs.commit }}
+
+  release:
+    name: Build Windows x64 installer
+    needs: [prepare, checks]
+    runs-on: windows-2022
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+      - name: Refuse to replace a published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          $tag = [Uri]::EscapeDataString($env:RELEASE_TAG)
+          $uri = "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/releases/tags/$tag"
+          $response = Invoke-WebRequest -Uri $uri -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = "application/vnd.github+json" } -SkipHttpErrorCheck
+          if ($response.StatusCode -eq 200) {
+            if (!(($response.Content | ConvertFrom-Json).draft)) {
+              throw "This release is already published. Create a new version tag instead."
+            }
+          } elseif ($response.StatusCode -ne 404) {
+            throw "Could not inspect the release (HTTP $($response.StatusCode))."
+          }
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri -> target
+          shared-key: windows-x64
+      - name: Install frontend dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Build installer and upload to release draft
+        id: build
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          projectPath: desktop
+          args: --ci --target x86_64-pc-windows-msvc --bundles nsis -- --locked
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: 图片创作 ${{ needs.prepare.outputs.tag }}
+          releaseBody: |
+            Windows x64 安装包见下方附件，SHA256 校验值见 SHA256SUMS.txt。
+            使用方法见 [README](https://github.com/${{ github.repository }}/blob/${{ needs.prepare.outputs.tag }}/README.md)。
+          releaseDraft: true
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+          generateReleaseNotes: true
+          releaseAssetNamePattern: ${{ needs.prepare.outputs.installer_name }}
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+      - name: Upload installer checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          INSTALLER_NAME: ${{ needs.prepare.outputs.installer_name }}
+          ARTIFACT_PATHS: ${{ steps.build.outputs.artifactPaths }}
+        run: |
+          $installers = @($env:ARTIFACT_PATHS | ConvertFrom-Json | Where-Object { $_ -match '[/\\]nsis[/\\].*-setup\.exe$' })
+          if ($installers.Count -ne 1) {
+            throw "Expected one NSIS installer, found $($installers.Count)."
+          }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installers[0]).Hash.ToLowerInvariant()
+          $checksumPath = Join-Path $env:RUNNER_TEMP "SHA256SUMS.txt"
+          [IO.File]::WriteAllText($checksumPath, "$hash  $env:INSTALLER_NAME`n", [Text.UTF8Encoding]::new($false))
+          gh release upload $env:RELEASE_TAG $checksumPath --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not upload the installer checksum."
+          }
+      - name: Link release draft
+        env:
+          RELEASE_URL: ${{ steps.build.outputs.releaseHtmlUrl }}
+        run: |
+          "[查看 Release 草稿]($env:RELEASE_URL) — 安装包与 SHA256 校验文件已上传，请检查后手动发布。" >> $env:GITHUB_STEP_SUMMARY

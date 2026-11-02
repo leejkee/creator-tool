@@ -1,0 +1,470 @@
+{
+  "image-create-tool-version": "v0.2.0",
+  "documentId": "creator-tool-demo",
+  "revision": 0,
+  "title": "创作示例",
+  "composition": {
+    "width": 1080,
+    "height": "auto"
+  },
+  "modules": [
+    {
+      "id": "demo-root",
+      "title": "创作示例画布",
+      "layout": [
+        4,
+        1
+      ],
+      "padding": 40,
+      "gap": 24,
+      "style": {
+        "background": {
+          "type": "color",
+          "color": "#eef4eb"
+        },
+        "radius": 24
+      },
+      "children": [
+        {
+          "position": [
+            0,
+            0
+          ],
+          "module": {
+            "id": "demo-header",
+            "title": "标题与标记",
+            "layout": [
+              1,
+              2
+            ],
+            "padding": 0,
+            "gap": 24,
+            "children": [
+              {
+                "position": [
+                  0,
+                  0
+                ],
+                "module": {
+                  "id": "demo-heading",
+                  "title": "主标题",
+                  "type": "text",
+                  "width": 680,
+                  "height": 128,
+                  "text": "把想法，\n排成一张图片。",
+                  "style": {
+                    "fontSize": 44,
+                    "color": "#173c2c",
+                    "bold": true,
+                    "lineHeight": 54
+                  }
+                }
+              },
+              {
+                "position": [
+                  0,
+                  1
+                ],
+                "module": {
+                  "id": "demo-mark",
+                  "title": "模块拼图",
+                  "layout": [
+                    2,
+                    2
+                  ],
+                  "padding": 20,
+                  "gap": 8,
+                  "style": {
+                    "background": {
+                      "type": "color",
+                      "color": "#267653"
+                    },
+                    "radius": 28
+                  },
+                  "children": [
+                    {
+                      "position": [
+                        0,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-mark-1",
+                        "type": "rect",
+                        "width": 40,
+                        "height": 40,
+                        "style": {
+                          "background": {
+                            "type": "color",
+                            "color": "#ffffff"
+                          },
+                          "radius": 8
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        0,
+                        1
+                      ],
+                      "module": {
+                        "id": "demo-mark-2",
+                        "type": "rect",
+                        "width": 40,
+                        "height": 40,
+                        "style": {
+                          "background": {
+                            "type": "color",
+                            "color": "#b8dbc3"
+                          },
+                          "radius": 8
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        1,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-mark-3",
+                        "type": "rect",
+                        "width": 40,
+                        "height": 40,
+                        "style": {
+                          "background": {
+                            "type": "color",
+                            "color": "#b8dbc3"
+                          },
+                          "radius": 8
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        1,
+                        1
+                      ],
+                      "module": {
+                        "id": "demo-mark-4",
+                        "type": "rect",
+                        "width": 40,
+                        "height": 40,
+                        "style": {
+                          "background": {
+                            "type": "color",
+                            "color": "#edc877"
+                          },
+                          "radius": 8
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "position": [
+            1,
+            0
+          ],
+          "module": {
+            "id": "demo-subtitle",
+            "title": "简介",
+            "type": "text",
+            "width": 832,
+            "height": 52,
+            "text": "文字、图片与网格布局，让信息清晰呈现。",
+            "style": {
+              "fontSize": 22,
+              "color": "#557561"
+            }
+          }
+        },
+        {
+          "position": [
+            2,
+            0
+          ],
+          "module": {
+            "id": "demo-features",
+            "title": "创作流程",
+            "layout": [
+              1,
+              3
+            ],
+            "padding": 0,
+            "gap": 20,
+            "children": [
+              {
+                "position": [
+                  0,
+                  0
+                ],
+                "module": {
+                  "id": "demo-edit",
+                  "title": "编辑内容",
+                  "layout": [
+                    3,
+                    1
+                  ],
+                  "padding": 20,
+                  "gap": 10,
+                  "style": {
+                    "background": {
+                      "type": "color",
+                      "color": "#ffffff"
+                    },
+                    "radius": 16
+                  },
+                  "children": [
+                    {
+                      "position": [
+                        0,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-edit-number",
+                        "title": "步骤编号",
+                        "type": "text",
+                        "width": 224,
+                        "height": 24,
+                        "text": "01 / 内容",
+                        "style": {
+                          "fontSize": 15,
+                          "color": "#267653",
+                          "bold": true
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        1,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-edit-title",
+                        "title": "编辑内容",
+                        "type": "text",
+                        "width": 224,
+                        "height": 38,
+                        "text": "编辑内容",
+                        "style": {
+                          "fontSize": 27,
+                          "color": "#173c2c",
+                          "bold": true
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        2,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-edit-description",
+                        "title": "功能说明",
+                        "type": "text",
+                        "width": 224,
+                        "height": 78,
+                        "text": "文字、图片、矩形\n按模块组织每一处表达。",
+                        "style": {
+                          "fontSize": 18,
+                          "color": "#5c7164",
+                          "lineHeight": 27
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "position": [
+                  0,
+                  1
+                ],
+                "module": {
+                  "id": "demo-layout",
+                  "title": "组织版面",
+                  "layout": [
+                    3,
+                    1
+                  ],
+                  "padding": 20,
+                  "gap": 10,
+                  "style": {
+                    "background": {
+                      "type": "color",
+                      "color": "#ffffff"
+                    },
+                    "radius": 16
+                  },
+                  "children": [
+                    {
+                      "position": [
+                        0,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-layout-number",
+                        "title": "步骤编号",
+                        "type": "text",
+                        "width": 224,
+                        "height": 24,
+                        "text": "02 / 布局",
+                        "style": {
+                          "fontSize": 15,
+                          "color": "#267653",
+                          "bold": true
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        1,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-layout-title",
+                        "title": "组织版面",
+                        "type": "text",
+                        "width": 224,
+                        "height": 38,
+                        "text": "组织版面",
+                        "style": {
+                          "fontSize": 27,
+                          "color": "#173c2c",
+                          "bold": true
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        2,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-layout-description",
+                        "title": "功能说明",
+                        "type": "text",
+                        "width": 224,
+                        "height": 78,
+                        "text": "嵌套网格与间距\n让信息自然排成版面。",
+                        "style": {
+                          "fontSize": 18,
+                          "color": "#5c7164",
+                          "lineHeight": 27
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "position": [
+                  0,
+                  2
+                ],
+                "module": {
+                  "id": "demo-export",
+                  "title": "生成图片",
+                  "layout": [
+                    3,
+                    1
+                  ],
+                  "padding": 20,
+                  "gap": 10,
+                  "style": {
+                    "background": {
+                      "type": "color",
+                      "color": "#ffffff"
+                    },
+                    "radius": 16
+                  },
+                  "children": [
+                    {
+                      "position": [
+                        0,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-export-number",
+                        "title": "步骤编号",
+                        "type": "text",
+                        "width": 224,
+                        "height": 24,
+                        "text": "03 / 输出",
+                        "style": {
+                          "fontSize": 15,
+                          "color": "#267653",
+                          "bold": true
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        1,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-export-title",
+                        "title": "生成图片",
+                        "type": "text",
+                        "width": 224,
+                        "height": 38,
+                        "text": "生成图片",
+                        "style": {
+                          "fontSize": 27,
+                          "color": "#173c2c",
+                          "bold": true
+                        }
+                      }
+                    },
+                    {
+                      "position": [
+                        2,
+                        0
+                      ],
+                      "module": {
+                        "id": "demo-export-description",
+                        "title": "功能说明",
+                        "type": "text",
+                        "width": 224,
+                        "height": 78,
+                        "text": "应用后查看预览\n将完成的作品导出 PNG。",
+                        "style": {
+                          "fontSize": 18,
+                          "color": "#5c7164",
+                          "lineHeight": 27
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "position": [
+            3,
+            0
+          ],
+          "module": {
+            "id": "demo-footer",
+            "title": "页脚",
+            "type": "text",
+            "width": 832,
+            "height": 44,
+            "text": "CREATOR TOOL    /    本地编辑 · 网格排版 · PNG 导出",
+            "style": {
+              "fontSize": 17,
+              "color": "#267653"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

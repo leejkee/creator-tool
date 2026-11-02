@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320" role="img" aria-labelledby="title">
+  <title id="title">警告：找不到图片</title>
+  <rect x="1" y="1" width="478" height="318" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <path d="M240 58L312 182H168Z" fill="#FEF3C7" stroke="#B45309" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M240 105V139" fill="none" stroke="#92400E" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="240" cy="160" r="6" fill="#92400E"/>
+  <text x="240" y="247" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="700" fill="#334155">警告：找不到图片</text>
+</svg>

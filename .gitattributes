@@ -1,0 +1,4 @@
+desktop/src/** text eol=lf
+desktop/*.ts text eol=lf
+desktop/*.mjs text eol=lf
+desktop/.prettierrc.json text eol=lf
