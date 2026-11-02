@@ -1,5 +1,5 @@
 //! Native file and directory selection; writing remains in the document file boundary.
-use crate::editor_paths;
+use crate::{editor_files, editor_paths};
 use creator_document_core::DocumentError;
 use serde::Deserialize;
 use tauri::WebviewWindow;
@@ -53,6 +53,9 @@ pub async fn choose_editor_path(
                 let mut path = selection
                     .into_path()
                     .map_err(|e| error("INVALID_PATH", e))?;
+                if kind == SelectionKind::Directory {
+                    path = editor_files::ensure_workspace_writable(&path)?;
+                }
                 if kind == SelectionKind::Json {
                     editor_paths::validate_named_document(&path)?;
                 }

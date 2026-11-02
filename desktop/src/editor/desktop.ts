@@ -66,6 +66,8 @@ export function createDesktopPort(): DesktopPort {
     },
     savePreferences: (config: AppPreferences) =>
       invoke("save_editor_config", { config }),
+    validateWorkspace: (workspace) =>
+      invoke<string>("validate_editor_workspace", { workspace }),
     scan: (workspace) =>
       invoke<WorkspaceItem[]>("scan_editor_workspace", { workspace }),
     async choose(kind, initial) {

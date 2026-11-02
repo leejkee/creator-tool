@@ -227,10 +227,32 @@ export class EditorApplication {
         },
       );
       this.preferences = await this.desktop.loadPreferences();
-      if (this.preferences.workspace) {
-        this.entries = await this.desktop.scan(this.preferences.workspace);
+      const workspace = this.preferences.workspace;
+      if (workspace) {
+        try {
+          const validatedWorkspace =
+            await this.desktop.validateWorkspace(workspace);
+          this.entries = await this.desktop.scan(validatedWorkspace);
+          this.preferences = {
+            ...this.preferences,
+            workspace: validatedWorkspace,
+          };
+          this.status = "选择文档开始编辑";
+        } catch (error) {
+          this.preferences = { ...this.preferences, workspace: undefined };
+          this.entries = [];
+          this.status = "已保存的工作区无法恢复，请重新选择工作区";
+          this.issues = [
+            {
+              severity: "error",
+              message: `工作区恢复失败：${describe(error)}`,
+              location: workspace,
+            },
+          ];
+        }
+      } else {
+        this.status = "请选择工作区开始创作";
       }
-      this.status = "选择文档开始编辑";
     } catch (error) {
       this.fail(error);
     } finally {

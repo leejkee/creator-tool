@@ -18,6 +18,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             editor_files::load_editor_config,
             editor_files::save_editor_config,
+            editor_files::validate_editor_workspace,
             editor_files::scan_editor_workspace,
             editor_files::open_editor_document,
             editor_dialogs::choose_editor_path,

@@ -122,6 +122,7 @@ export interface DesktopPort {
   available(): boolean;
   loadPreferences(): Promise<AppPreferences>;
   savePreferences(value: AppPreferences): Promise<void>;
+  validateWorkspace(workspace: string): Promise<string>;
   scan(workspace: string): Promise<WorkspaceItem[]>;
   choose: ChoosePath;
   open(workspace: string, directory: string): Promise<StoredFile>;

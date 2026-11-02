@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | 启动、编辑器组装 | [main.ts](../desktop/src/main.ts)、[App.vue](../desktop/src/App.vue) | [editor/index.ts](../desktop/src/editor/index.ts) |
 | 整体布局、文档栏、工具栏、欢迎页 | [App.vue](../desktop/src/App.vue) | [editor.css](../desktop/src/editor.css) |
-| 工作区选择、文档列表扫描与刷新 | [App.vue](../desktop/src/App.vue) | [editor/application.ts](../desktop/src/editor/application.ts)（`initialize / chooseWorkspace / rescan`）、[editor/desktop.ts](../desktop/src/editor/desktop.ts) |
+| 工作区选择、可写性检查、恢复失败重新引导、文档列表扫描与刷新 | [App.vue](../desktop/src/App.vue) | [editor/application.ts](../desktop/src/editor/application.ts)（`initialize / chooseWorkspace / rescan`）、[editor/desktop.ts](../desktop/src/editor/desktop.ts)、[editor_files.rs](../desktop/src-tauri/src/editor_files.rs)（`validate_editor_workspace / ensure_workspace_writable`）、[editor_dialogs.rs](../desktop/src-tauri/src/editor_dialogs.rs) |
 | 同名 JSON 的扫描、打开及模板命名检查 | —（文档列表和模板选择共用） | [editor_files.rs](../desktop/src-tauri/src/editor_files.rs)、[editor_paths.rs](../desktop/src-tauri/src/editor_paths.rs)、[documents.rs](../desktop/src-tauri/src/documents.rs) |
 | 打开、切换、关闭同名 JSON 文档及未保存保护 | [App.vue](../desktop/src/App.vue) | [editor/application.ts](../desktop/src/editor/application.ts)（`open / prepareLeave / closeDocument`）、[editor/desktop.ts](../desktop/src/editor/desktop.ts) |
 | 新建文档、选择 JSON 模板 | [components/InformationEditorForm.vue](../desktop/src/components/InformationEditorForm.vue)、[App.vue](../desktop/src/App.vue) | [editor/application.ts](../desktop/src/editor/application.ts)（`create / chooseTemplate`）、[editor/desktop.ts](../desktop/src/editor/desktop.ts) |

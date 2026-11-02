@@ -35,6 +35,82 @@ fn config_path(app: &AppHandle) -> Result<PathBuf> {
         .map_err(|e| error("CONFIG_FAILED", e))
 }
 
+pub(super) fn ensure_workspace_writable(workspace: &Path) -> Result<PathBuf> {
+    if !workspace.is_absolute() {
+        return Err(error("INVALID_DIRECTORY", "请选择工作区的完整目录路径"));
+    }
+    let workspace = fs::canonicalize(workspace)
+        .map_err(|e| error("INVALID_DIRECTORY", format!("工作区无法访问：{e}")))?;
+    if !workspace.is_dir() {
+        return Err(error("INVALID_DIRECTORY", "工作区必须是已存在的目录"));
+    }
+
+    // New documents need a subdirectory as well as a writable file.
+    let probe_directory = loop {
+        let path = workspace.join(format!(
+            ".creator-workspace-check-{}-{}",
+            std::process::id(),
+            NEXT_FILE.fetch_add(1, Ordering::Relaxed)
+        ));
+        match fs::create_dir(&path) {
+            Ok(()) => break path,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => {
+                return Err(error(
+                    "WORKSPACE_NOT_WRITABLE",
+                    format!("工作区无法创建文档目录，请检查写入权限或选择其他目录：{e}"),
+                ));
+            }
+        }
+    };
+    let probe_file = probe_directory.join("write-check.tmp");
+    let write_result = (|| -> std::io::Result<()> {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&probe_file)?;
+        let result = file
+            .write_all(b"creator-tool workspace write check\n")
+            .and_then(|_| file.sync_all());
+        drop(file);
+        // Always attempt cleanup, including after a write or sync failure.
+        let cleanup = fs::remove_file(&probe_file);
+        result.and(cleanup)
+    })();
+    // Never recursively remove a directory: only our own empty probe may be removed.
+    if let Err(e) = fs::remove_dir(&probe_directory) {
+        let write_error = write_result
+            .as_ref()
+            .err()
+            .map(|e| format!("写入检查失败：{e}；"))
+            .unwrap_or_default();
+        return Err(error(
+            "WORKSPACE_CHECK_FAILED",
+            format!(
+                "{write_error}无法清理工作区检查目录 {}：{e}。请检查权限并清理该目录，或选择其他工作区",
+                probe_directory.display()
+            ),
+        ));
+    }
+    write_result.map_err(|e| {
+        error(
+            "WORKSPACE_NOT_WRITABLE",
+            format!("工作区文件写入或清理失败，请检查写入权限、可用空间或选择其他目录：{e}"),
+        )
+    })?;
+    Ok(workspace)
+}
+
+#[tauri::command]
+pub async fn validate_editor_workspace(workspace: String) -> Result<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ensure_workspace_writable(Path::new(&workspace))
+            .map(|path| path.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|e| error("WORKSPACE_CHECK_FAILED", e))?
+}
+
 fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut file = OpenOptions::new()
         .write(true)

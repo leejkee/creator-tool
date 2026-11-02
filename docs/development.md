@@ -49,6 +49,8 @@ npm run tauri build
 
 Windows 安装包输出至 `desktop/src-tauri/target/release/bundle/`。安装包构建与系统要求见[Tauri Windows 打包说明](https://v2.tauri.app/distribute/windows-installer/)。
 
+GitHub Actions 的版本标签、Release 草稿及发布操作见[发布说明](releasing.md)。
+
 ## 示例与实现入口
 
 - [创作示例](../desktop/examples/创作示例/创作示例.json)：可直接通过 `desktop/examples` 工作区打开的完整文档。
