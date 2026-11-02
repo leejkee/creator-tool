@@ -1,75 +1,129 @@
-# 图片 JSON 编辑器
+<div align="center">
+  <img src="docs/assets/logo.svg" width="96" height="96" alt="图片创作 Logo" />
+  <h1>图片创作</h1>
+  <p><strong>把想法，排成一张图片。</strong></p>
+  <p>Creator Tool · 本地图片排版与 PNG 导出工具</p>
+  <p>
+    <img src="docs/assets/stack.svg" width="574" height="34" alt="技术栈：Tauri 2、Vue 3、TypeScript、Rust、Canvas" />
+  </p>
+  <p>
+    <a href="#主要功能">主要功能</a> ·
+    <a href="#界面演示">界面演示</a> ·
+    <a href="#启动应用">启动应用</a> ·
+    <a href="#使用方法">使用方法</a> ·
+    <a href="#文档">文档</a>
+  </p>
+</div>
 
-基于 Tauri 的本地图片创作工具：使用独立 JSON 描述模块内容、网格和样式，通过共享的 TypeScript 渲染逻辑预览并导出 PNG。核心迁移基本完成，后续开发以 `desktop/` 为基础；旧 Python 工程仅保留为历史参考，不继续维护迁移演示。
+图片创作将文字、图片和矩形组织为模块，通过网格完成排版。你可以在桌面界面中编辑，也可以直接修改 JSON 文档，再预览并导出 PNG，适合制作说明卡片、信息长图和图文海报。
 
-## 需求入口
+作品与素材保存在本地，每张图片对应一份独立的 JSON 文档。
 
-先读[架构与需求基线](docs/architecture.md)，再按任务查阅对应明细：
+## 主要功能
 
-| 文档 | 内容 |
-| --- | --- |
-| [文档与文件](docs/document.md) | JSON 协议、会话、编辑、新建、模板、保存和外部变化 |
-| [渲染](docs/rendering.md) | 参数、默认值、网格、输出适配、图文外观、诊断和出图验收 |
-| [资源与复用](docs/resources.md) | 本地图片、字体、处理链、基础图片操作、Style 和模块资源 |
+<table>
+  <tr>
+    <td width="50%">
+      <strong>文字、图片与矩形</strong><br />
+      在属性面板中编辑内容、尺寸、字体、颜色、背景、边框与圆角。
+    </td>
+    <td width="50%">
+      <strong>网格与嵌套布局</strong><br />
+      用行列、间距和内边距组织模块，支持新增、删除及调整父模块和位置。
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <strong>预览与 PNG 导出</strong><br />
+      点击画布选择模块，应用修改后刷新预览，按设定的输出尺寸导出图片。
+    </td>
+    <td>
+      <strong>工作区与模板</strong><br />
+      按目录管理作品，从空白文档开始，或复制已有 JSON 模板继续创作。
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <strong>本地素材与系统字体</strong><br />
+      通过系统窗口选择图片，保存时复制素材；支持选择本机已安装的字体。
+    </td>
+    <td>
+      <strong>保存与文件保护</strong><br />
+      支持手动保存、自动保存、未保存提醒，以及外部文件变化和渲染问题提示。
+    </td>
+  </tr>
+</table>
 
-需求只在上述文档定义；开发约束见 [AGENTS.md](AGENTS.md)。源码说明实际实现，不以历史演示或旧文档补充当前需求。
+## 界面演示
 
-## 迁移状态与后续工作
+<p align="center">
+  <img src="docs/assets/editor.png" width="1360" alt="图片创作的 Tauri 界面：左侧文档列表、中间作品预览、右侧模块属性、底部状态信息" />
+</p>
 
-当前范围内的核心迁移基本完成：Rust 文档处理与会话、一次性 Style 应用、TS 数据契约及渲染校验、图片处理链和 Canvas Engine 均已提供实现。第一版 GUI 已接入工作区、模块编辑、预览、保存及 PNG 导出；完整桌面交互仍需在 Windows Tauri 环境验收。
+<p align="center">
+  <sub>当前桌面界面，使用仓库自带的「创作示例」。</sub>
+</p>
 
-| 能力 | 状态 |
-| --- | --- |
-| Rust 文档读写、会话、编辑、模板复制、另存为和外部变化保护 | 已有实现 |
-| 模块组合关系 | 已调整为由 `layout` 和子模块表达，Rust、TS、Style 与当前示例已同步；协议见文档需求 |
-| TS 只读契约、渲染参数校验和默认值 | 已有实现 |
-| Style 对象的一次性应用、图片处理工具和处理链、本地字体枚举、缺图占位资源 | 已有基础实现 |
-| Canvas Engine：本地素材读取、字体回退、像素布局、图文合成、PNG 数据编码 | 已有实现；用户已进行一次 JSON 出图验证，尚不代表模块模型调整后或完整 GUI 流程验收 |
-| GUI 工作区与文档管理 | 已接入系统原生文件与目录选择，支持工作区、图片、JSON 模板及另存为；一级扫描和打开仅接受与目录同名的 JSON，模板也检查同名规则；已有配置持久化、新建及模板、单文档切换和未保存保护 |
-| GUI 模块编辑 | 已实现预览点选、当前模块属性表单、输入草稿与应用、增删及父子位置调整；拖放仍为 TODO |
-| TS 编辑工作副本与保存 | 已实现；保存时提交完整已应用内容，Rust 使用候选会话完成可靠写入，失败保留前端编辑和原保存基线 |
-| 素材复制及 autosave | 已接入保存流程，包含素材版本检查及重名后缀；自动保存可开关，默认关闭 |
-| PNG 文件导出 | 已接入成功预览 Canvas 的编码、默认路径、覆盖确认、文件状态与素材覆盖保护及磁盘写入 |
-| 外部变化与诊断 | 已接入清洁文档自动重载、本地编辑冲突提示、非法或丢失文件保护、过期预览标记及展开诊断 |
-| 底部信息区域 | 悬停说明、表单、确认、参数和字体候选及诊断在底部布局内显示；内置文件浏览器已移除，文件和目录通过系统原生窗口选择 |
-| 实际 Tauri WebView 完整流程 | 尚待 Windows 环境交互验收；静态构建通过不代表运行流程已经验收 |
+## 启动应用
 
-Engine 公共入口为 [desktop/src/render-engine/index.ts](desktop/src/render-engine/index.ts)，提供独立文档渲染、已有结果的 PNG 编码、一次渲染并编码，以及 Tauri 本地资源读取适配。接口支持独立 JSON 与明确目录输入，不依赖打开的文档会话，不改写源数据或保存文件。
+目前面向 Windows 桌面使用。从源码运行前，准备 Node.js 22.12+、Rust 的 MSVC 工具链、Microsoft C++ Build Tools 和 WebView2。安装步骤见 [Tauri Windows 环境说明](https://v2.tauri.app/start/prerequisites/#windows)。
 
-GUI 入口为 [desktop/src/App.vue](desktop/src/App.vue)。组件只使用独立的[界面契约](desktop/src/editor/contracts.ts)与编辑应用层；图片 JSON 映射、Engine 调用、Tauri 文件接口分别放在适配层，便于后续协议调整。图片处理链目前通过属性面板中的参数 JSON 编辑，尚无逐步骤可视化表单。Style 与模块资源库入口未纳入本轮界面。
-
-本轮以 Windows 为使用范围。测试由用户后续安排，开发中不新增、修改或运行测试；格式、静态检查和构建不代表渲染结果或桌面交互已经验收。
-
-## 开发与检查
-
-本机需具备 Node.js、Rust 和对应平台的 Tauri 构建环境。在 `desktop/` 下执行：
+在项目根目录打开终端：
 
 ```powershell
+cd desktop
 npm ci
 npm run tauri dev
 ```
 
-`npm run dev` 只启动前端开发服务，不提供原生文件和字体能力。TypeScript / Vue 修改后执行：
+需要安装包时，在 `desktop/` 下执行：
 
 ```powershell
-npm run fix
-npm run check
+npm run tauri build
 ```
 
-从仓库根目录检查 Rust/Tauri 编译及 Clippy（不运行测试）：
+生成的 Windows 安装包位于 `desktop/src-tauri/target/release/bundle/`。安装后直接启动应用即可。
 
-```powershell
-cargo check --manifest-path desktop/src-tauri/Cargo.toml --locked
-cargo clippy --manifest-path desktop/src-tauri/Cargo.toml --locked --lib -- -D warnings
+## 使用方法
+
+1. **选择工作区**：启动后选择保存作品的目录；左侧会列出符合命名规则的文档。
+2. **新建或打开作品**：点击「新建文档」输入名称，也可以选择已有 JSON 模板。
+3. **组织内容**：新增文字、图片、矩形或布局模块，并设置父模块与行列位置。
+4. **编辑并应用**：在预览中点击模块，在右侧修改属性，点击「应用修改」更新文档与预览。
+5. **保存作品**：点击「保存」，或在左下角开启自动保存。新选择的图片会在保存时复制到当前文档目录。
+6. **导出 PNG**：点击「导出 PNG」。图片保存在 JSON 同目录，文件名与 JSON 一致；已有同名图片时会提示是否覆盖。
+
+想先体验界面，可以将工作区选为 [desktop/examples](desktop/examples)，打开「创作示例」。该示例不依赖外部图片。
+
+### 工作区目录
+
+文档必须是 `<目录>/<目录名>.json`，应用只扫描工作区的一级子目录。例如：
+
+```text
+我的工作区/
+├─ 作品封面/
+│  ├─ 作品封面.json
+│  ├─ 配图.png
+│  └─ 作品封面.png
+└─ 说明卡片/
+   └─ 说明卡片.json
 ```
 
-Rust 修改还需执行相关工程的格式检查。测试由用户另行安排。
+只有其他名称 JSON 的目录不会出现在文档列表中。JSON 模板同样要求文件名与所在目录同名。
 
-## 示例与保留资料
+图片相对路径以 JSON 所在目录为基准。切换模块或文档前，按提示处理尚未应用、尚未保存的修改；保存和导出使用已应用的内容。底部信息区域会显示操作提示、错误和警告。
 
-- `desktop/examples/grid.image.json`：当前结构的图片 JSON 示例；`module-style.json`：Style 资源示例。
-- [tool_test/](tool_test/README.md)：仅保留原始图片素材副本及来源清单，供后续实图测试使用，不是应用运行时依赖。
-- `acceptance/`：历史内容来源；原始笔记不因文档整理而修改。
-- `image_create_tool/`：旧 Python 实现及其资源协议，不作为 Tauri 需求入口。
+### 快捷键
 
-迁移临时工程、旧协议图片 JSON、历史验收脚本与报告、演示出图及局部配置已清理。后续输入和验收以当前需求及 Engine 接口为准，不再使用旧迁移演示作为开发入口。
+| 快捷键 | 操作 |
+| --- | --- |
+| `Ctrl + S` | 保存已应用的修改 |
+| `Ctrl + Shift + S` | 另存为 |
+| `Esc` | 取消当前底部操作 |
+
+## 文档
+
+- [文档格式与文件管理](docs/document.md)
+- [布局、渲染与输出](docs/rendering.md)
+- [素材、字体与图片处理](docs/resources.md)
+- [开发环境与构建检查](docs/development.md)

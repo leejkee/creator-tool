@@ -1,11 +1,4 @@
-.venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-*.egg-info/
-cache/
 *.log
-.*.json.lock
 build/
 dist/
 /tmp/

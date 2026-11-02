@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <title>图片创作</title>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="#267653"/>
+  <rect x="26" y="26" width="34" height="34" rx="7" fill="#fff"/>
+  <rect x="68" y="26" width="34" height="34" rx="7" fill="#b8dbc3"/>
+  <rect x="26" y="68" width="34" height="34" rx="7" fill="#b8dbc3"/>
+  <rect x="68" y="68" width="34" height="34" rx="7" fill="#edc877"/>
+</svg>
