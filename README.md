@@ -4,7 +4,11 @@
   <p><strong>把想法，排成一张图片。</strong></p>
   <p>Creator Tool · 本地图片排版与 PNG 导出工具</p>
   <p>
-    <img src="docs/assets/stack.svg" width="574" height="34" alt="技术栈：Tauri 2、Vue 3、TypeScript、Rust、Canvas" />
+    <img src="https://img.shields.io/badge/Tauri-2-24C8D8?style=for-the-badge&amp;logo=tauri&amp;logoColor=white" height="28" alt="Tauri 2" />
+    <img src="https://img.shields.io/badge/Vue-3-4FC08D?style=for-the-badge&amp;logo=vuedotjs&amp;logoColor=white" height="28" alt="Vue 3" />
+    <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&amp;logo=typescript&amp;logoColor=white" height="28" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&amp;logo=rust&amp;logoColor=white" height="28" alt="Rust" />
+    <img src="https://img.shields.io/badge/Canvas-E34F26?style=for-the-badge&amp;logo=html5&amp;logoColor=white" height="28" alt="Canvas" />
   </p>
   <p>
     <a href="#主要功能">主要功能</a> ·
