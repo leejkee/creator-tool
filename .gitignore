@@ -1,6 +1,7 @@
 *.log
 build/
 dist/
+/outputs/
 /tmp/
 /tool_test/
 test/
