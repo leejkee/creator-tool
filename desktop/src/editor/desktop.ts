@@ -66,12 +66,8 @@ export function createDesktopPort(): DesktopPort {
     },
     savePreferences: (config: AppPreferences) =>
       invoke("save_editor_config", { config }),
-    async scan(workspace) {
-      const result = await invoke<
-        (Omit<WorkspaceItem, "preferred"> & { preferred: string | null })[]
-      >("scan_editor_workspace", { workspace });
-      return result.map((e) => ({ ...e, preferred: e.preferred ?? undefined }));
-    },
+    scan: (workspace) =>
+      invoke<WorkspaceItem[]>("scan_editor_workspace", { workspace }),
     async choose(kind, initial) {
       return (
         (await invoke<string | null>("choose_editor_path", {
@@ -80,7 +76,8 @@ export function createDesktopPort(): DesktopPort {
         })) ?? undefined
       );
     },
-    open: (path) => snapshot("open_document", { path }),
+    open: (workspace, directory) =>
+      snapshot("open_editor_document", { workspace, directory }),
     create: (workspace, name, template) =>
       snapshot("create_document", {
         baseDirectory: workspace,

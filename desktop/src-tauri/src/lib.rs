@@ -1,6 +1,7 @@
 mod documents;
 mod editor_dialogs;
 mod editor_files;
+mod editor_paths;
 mod fonts;
 mod render_assets;
 
@@ -18,6 +19,7 @@ pub fn run() {
             editor_files::load_editor_config,
             editor_files::save_editor_config,
             editor_files::scan_editor_workspace,
+            editor_files::open_editor_document,
             editor_dialogs::choose_editor_path,
             editor_files::save_editor_document,
             editor_files::editor_png_destination,

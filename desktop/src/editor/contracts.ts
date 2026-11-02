@@ -2,8 +2,7 @@
 export interface WorkspaceItem {
   name: string;
   directory: string;
-  candidates: string[];
-  preferred?: string;
+  path: string;
 }
 export interface AppPreferences {
   workspace?: string;
@@ -105,7 +104,7 @@ export interface Decision {
 }
 export type Ask = (decision: Decision) => Promise<string>;
 
-export type PathKind = "directory" | "image" | "json" | "document" | "saveAs";
+export type PathKind = "directory" | "image" | "json" | "saveAs";
 export type ChoosePath = (
   kind: PathKind,
   initial?: string,
@@ -125,7 +124,7 @@ export interface DesktopPort {
   savePreferences(value: AppPreferences): Promise<void>;
   scan(workspace: string): Promise<WorkspaceItem[]>;
   choose: ChoosePath;
-  open(path: string): Promise<StoredFile>;
+  open(workspace: string, directory: string): Promise<StoredFile>;
   create(
     workspace: string,
     name: string,

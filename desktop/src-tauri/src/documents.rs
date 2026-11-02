@@ -1,4 +1,5 @@
 //! Tauri transport and polling lifecycle. Domain state lives in document-core.
+use crate::editor_paths;
 use creator_document_core::{
     DocumentError, DocumentStore, ImageDocument, Node, Snapshot, StyleNode,
 };
@@ -32,6 +33,7 @@ pub async fn open_document(
     state: State<'_, Documents>,
     path: String,
 ) -> Result<Snapshot> {
+    editor_paths::validate_named_document(Path::new(&path))?;
     with_store(&state, |store| {
         let snapshot = store.open(Path::new(&path))?;
         publish(&app, &snapshot);
@@ -174,6 +176,9 @@ pub async fn create_document(
     module_name: String,
     template_path: Option<String>,
 ) -> Result<Snapshot> {
+    if let Some(path) = template_path.as_deref() {
+        editor_paths::validate_named_document(Path::new(path))?;
+    }
     with_store(&state, |store| {
         let snapshot = store.create(
             base_directory.as_deref().map(Path::new),

@@ -1,7 +1,7 @@
 //! Native file and directory selection; writing remains in the document file boundary.
+use crate::editor_paths;
 use creator_document_core::DocumentError;
 use serde::Deserialize;
-use std::fs;
 use tauri::WebviewWindow;
 use tauri_plugin_dialog::DialogExt;
 
@@ -18,7 +18,6 @@ pub enum SelectionKind {
     Directory,
     Image,
     Json,
-    Document,
     SaveAs,
 }
 
@@ -43,10 +42,6 @@ pub async fn choose_editor_path(
                 .set_title("选择 JSON 模板")
                 .add_filter("JSON", &["json"])
                 .blocking_pick_file(),
-            SelectionKind::Document => dialog
-                .set_title("选择要打开的 JSON")
-                .add_filter("JSON", &["json"])
-                .blocking_pick_file(),
             SelectionKind::SaveAs => dialog
                 .set_title("文档另存为")
                 .add_filter("JSON", &["json"])
@@ -58,28 +53,8 @@ pub async fn choose_editor_path(
                 let mut path = selection
                     .into_path()
                     .map_err(|e| error("INVALID_PATH", e))?;
-                if kind == SelectionKind::Document {
-                    let directory = initial
-                        .as_deref()
-                        .ok_or_else(|| error("INVALID_DIRECTORY", "未指定文档目录"))?;
-                    let directory =
-                        fs::canonicalize(directory).map_err(|e| error("INVALID_DIRECTORY", e))?;
-                    let parent = path
-                        .parent()
-                        .map(fs::canonicalize)
-                        .transpose()
-                        .map_err(|e| error("INVALID_DIRECTORY", e))?;
-                    if parent.as_deref() != Some(directory.as_path())
-                        || !path.is_file()
-                        || !path
-                            .extension()
-                            .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
-                    {
-                        return Err(error(
-                            "INVALID_PATH",
-                            format!("请选择 {} 目录中的 JSON 文件", directory.display()),
-                        ));
-                    }
+                if kind == SelectionKind::Json {
+                    editor_paths::validate_named_document(&path)?;
                 }
                 if kind == SelectionKind::SaveAs
                     && !path

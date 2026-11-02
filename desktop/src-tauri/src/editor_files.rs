@@ -1,5 +1,5 @@
 //! Desktop file boundary for the editor. No rendering parameter validation here.
-use crate::{documents, render_assets};
+use crate::{documents, editor_paths, render_assets};
 use creator_document_core::{DocumentError, ImageDocument, Node, Snapshot};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -94,14 +94,14 @@ pub fn save_editor_config(app: AppHandle, config: EditorConfig) -> Result<()> {
 pub struct WorkspaceEntry {
     name: String,
     directory: String,
-    candidates: Vec<String>,
-    preferred: Option<String>,
+    path: String,
 }
 
 #[tauri::command]
 pub async fn scan_editor_workspace(workspace: String) -> Result<Vec<WorkspaceEntry>> {
     tauri::async_runtime::spawn_blocking(move || {
         let mut entries = Vec::new();
+        let workspace = fs::canonicalize(workspace).map_err(|e| error("SCAN_FAILED", e))?;
         for child in fs::read_dir(&workspace).map_err(|e| error("SCAN_FAILED", e))? {
             let child = child.map_err(|e| error("SCAN_FAILED", e))?;
             if !child
@@ -112,35 +112,18 @@ pub async fn scan_editor_workspace(workspace: String) -> Result<Vec<WorkspaceEnt
                 continue;
             }
             let name = child.file_name().to_string_lossy().into_owned();
-            let mut candidates = Vec::new();
-            for file in fs::read_dir(child.path()).map_err(|e| error("SCAN_FAILED", e))? {
-                let file = file.map_err(|e| error("SCAN_FAILED", e))?;
-                if file
-                    .file_type()
-                    .map_err(|e| error("SCAN_FAILED", e))?
-                    .is_file()
-                    && file
-                        .path()
-                        .extension()
-                        .is_some_and(|s| s.eq_ignore_ascii_case("json"))
-                {
-                    candidates.push(file.path().to_string_lossy().into_owned());
-                }
+            let directory = child.path();
+            let path = editor_paths::named_document_path(&directory)?;
+            match fs::symlink_metadata(&path) {
+                Ok(metadata) if metadata.is_file() => {}
+                Ok(_) => continue,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(error("SCAN_FAILED", e)),
             }
-            candidates.sort();
-            if candidates.is_empty() {
-                continue;
-            }
-            let preferred = candidates
-                .iter()
-                .find(|p| Path::new(p).file_stem().is_some_and(|s| s == name.as_str()))
-                .cloned()
-                .or_else(|| (candidates.len() == 1).then(|| candidates[0].clone()));
             entries.push(WorkspaceEntry {
                 name,
-                directory: child.path().to_string_lossy().into_owned(),
-                candidates,
-                preferred,
+                directory: directory.to_string_lossy().into_owned(),
+                path: path.to_string_lossy().into_owned(),
             });
         }
         entries.sort_by(|a, b| a.name.cmp(&b.name));
@@ -148,6 +131,30 @@ pub async fn scan_editor_workspace(workspace: String) -> Result<Vec<WorkspaceEnt
     })
     .await
     .map_err(|e| error("SCAN_FAILED", e))?
+}
+
+#[tauri::command]
+pub async fn open_editor_document(
+    app: AppHandle,
+    state: tauri::State<'_, documents::Documents>,
+    workspace: String,
+    directory: String,
+) -> Result<Snapshot> {
+    let workspace = fs::canonicalize(workspace).map_err(|e| error("INVALID_DIRECTORY", e))?;
+    let directory = fs::canonicalize(directory).map_err(|e| error("INVALID_DIRECTORY", e))?;
+    if directory.parent() != Some(workspace.as_path()) {
+        return Err(error(
+            "INVALID_DIRECTORY",
+            "只能打开当前工作区一级子目录中的文档",
+        ));
+    }
+    let path = editor_paths::named_document_path(&directory)?;
+    editor_paths::validate_named_document(&path)?;
+    documents::with_store(&state, |store| {
+        let snapshot = store.open(&path)?;
+        documents::publish(&app, &snapshot);
+        Ok(snapshot)
+    })
 }
 
 #[derive(Deserialize)]

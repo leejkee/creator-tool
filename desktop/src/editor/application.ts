@@ -306,23 +306,17 @@ export class EditorApplication {
     });
   }
   async open(entry: WorkspaceItem): Promise<void> {
-    if (this.busy) {
-      return;
-    }
-    let path = entry.preferred;
-    if (!path) {
-      try {
-        path = await this.choosePath("document", entry.directory);
-      } catch (error) {
-        this.fail(error);
-        return;
-      }
-    }
-    if (!path || path === this.file?.path || !(await this.prepareLeave())) {
+    const workspace = this.preferences.workspace;
+    if (
+      this.busy ||
+      !workspace ||
+      entry.path === this.file?.path ||
+      !(await this.prepareLeave())
+    ) {
       return;
     }
     await this.perform("正在打开文档…", async () => {
-      const next = await this.desktop.open(path!);
+      const next = await this.desktop.open(workspace, entry.directory);
       if (this.file && this.file.sessionId !== next.sessionId) {
         try {
           await this.desktop.close(this.file);
