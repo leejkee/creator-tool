@@ -3,6 +3,7 @@ mod editor_dialogs;
 mod editor_files;
 mod editor_paths;
 mod fonts;
+mod library;
 mod render_assets;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -11,11 +12,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(documents::Documents::default())
+        .manage(library::Library::default())
         .setup(|app| {
             documents::start_watcher(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            library::library_context,
+            library::list_library_resources,
+            library::read_library_resource,
+            library::save_library_resource,
+            library::delete_library_resource,
+            library::library_resource_version,
+            library::create_library_document,
             editor_files::load_editor_config,
             editor_files::save_editor_config,
             editor_files::validate_editor_workspace,

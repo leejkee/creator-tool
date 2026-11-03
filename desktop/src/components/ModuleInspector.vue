@@ -20,6 +20,9 @@ const emit = defineEmits<{
   remove: [];
   move: [];
   fonts: [];
+  style: [];
+  template: [];
+  chooseStyle: [];
 }>();
 const sections = computed(() => {
   const sections = new Map<string, EditorField[]>();
@@ -158,6 +161,29 @@ async function chooseFont(field: EditorField): Promise<void> {
           </div>
         </fieldset>
         <div class="module-actions">
+          <button
+            type="button"
+            :disabled="!!view.busy || disabled"
+            @click="emit('style')"
+          >
+            提取为 Style
+          </button>
+          <button
+            v-if="view.resource?.kind !== 'style'"
+            type="button"
+            :disabled="!!view.busy || disabled"
+            @click="emit('template')"
+          >
+            另存为模板
+          </button>
+          <button
+            v-if="view.resource?.kind !== 'style'"
+            type="button"
+            :disabled="!!view.busy || disabled"
+            @click="emit('chooseStyle')"
+          >
+            应用 Style
+          </button>
           <button
             type="button"
             :disabled="!!view.busy || disabled"

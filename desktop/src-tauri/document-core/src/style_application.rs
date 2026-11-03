@@ -1,6 +1,6 @@
 //! One-shot Style application without document or recipe validation.
 use crate::{DocumentError, DocumentStore, Node, Result, Snapshot, StyleNode};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
 // These are the parameters owned by Style application, not an input allowlist.
@@ -19,21 +19,39 @@ const RENDER_FIELDS: &[&str] = &[
     "columnGap",
 ];
 
+fn merge_fields(target: &mut Map<String, Value>, patch: &Map<String, Value>) {
+    for (key, value) in patch {
+        if let (Some(Value::Object(current)), Value::Object(patch)) = (target.get_mut(key), value) {
+            merge_fields(current, patch);
+        } else {
+            target.insert(key.clone(), value.clone());
+        }
+    }
+}
+
 /// Return an independent module with the recipe's managed parameters.
 /// Child recipes are selected by position; unmatched children remain unchanged.
 pub fn apply_style(image: &Node, style: &StyleNode) -> Result<Node> {
     let mut result = image.clone();
     let mut pending = vec![(&mut result, style)];
     while let Some((target, recipe)) = pending.pop() {
-        target.processors.clone_from(&recipe.processors);
-        target.properties.remove("style");
-        if let Some(visual) = &recipe.style {
-            target
+        if let Some(processors) = &recipe.processors {
+            target.processors.clone_from(processors);
+        }
+        if let Some(visual) = &recipe.style
+            && !visual.is_empty()
+        {
+            let current = target
                 .properties
-                .insert("style".into(), Value::Object(visual.clone()));
+                .entry("style")
+                .or_insert_with(|| Value::Object(Map::new()));
+            if let Value::Object(current) = current {
+                merge_fields(current, visual);
+            } else {
+                *current = Value::Object(visual.clone());
+            }
         }
         for key in RENDER_FIELDS {
-            target.properties.remove(*key);
             if let Some(value) = recipe.properties.get(*key) {
                 target.properties.insert((*key).into(), value.clone());
             }

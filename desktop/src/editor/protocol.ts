@@ -141,6 +141,7 @@ export function fieldsFor(
   draft: ReadonlyMap<string, string>,
   errors: ReadonlyMap<string, string>,
   fonts: readonly string[],
+  mode: "document" | "template" | "style" = "document",
 ): EditorField[] {
   const entry = indexModules(doc).get(id);
   if (!entry) {
@@ -159,7 +160,11 @@ export function fieldsFor(
     choices?: EditorField["options"],
     required = false,
   ) => {
-    bindings.set(id, { keys, type, required });
+    bindings.set(id, {
+      keys,
+      type,
+      required: mode === "style" && keys[0] !== "layout" ? false : required,
+    });
     const source = keys[0] === "$output" ? doc.composition : node;
     const actualKeys = keys[0] === "$output" ? keys.slice(1) : keys;
     fields.push({
@@ -512,6 +517,30 @@ export function fieldsFor(
     processor.hint =
       '按顺序执行，例如：\n[["image-tools.blurImage", {"blurRadius": 8}]]';
   }
+  if (mode !== "document") {
+    return fields.filter((field) => {
+      if (field.kind === "asset") {
+        return false;
+      }
+      if (mode === "style") {
+        if (field.section === "内容" || field.section === "最终 PNG") {
+          return false;
+        }
+        field.placeholder = "未提供：应用时保留目标原值";
+        field.hint =
+          field.id === "image.processors"
+            ? "留空保留目标处理链；填写 [] 清空；其他数组整体替换。"
+            : "留空表示配方不提供此参数，预览使用演示值。";
+        if (field.id === "border.enabled") {
+          field.options = [
+            { value: "true", label: "包含边框参数" },
+            { value: "false", label: "不包含边框参数" },
+          ];
+        }
+      }
+      return true;
+    });
+  }
   return fields;
 }
 
@@ -524,6 +553,10 @@ export function applyFields(
   doc: WorkingDocument,
   id: string,
   draft: ReadonlyMap<string, string>,
+  options: {
+    mode?: "document" | "template" | "style";
+    preview?: (doc: WorkingDocument) => WorkingDocument;
+  } = {},
 ): WorkingDocument {
   const next = documentCopy(doc);
   const entry = indexModules(next).get(id);
@@ -533,7 +566,9 @@ export function applyFields(
   const errors = new Map<string, string>();
   const node = entry.module;
   const visible = new Set(
-    fieldsFor(doc, id, draft, new Map(), []).map((field) => field.id),
+    fieldsFor(doc, id, draft, new Map(), [], options.mode).map(
+      (field) => field.id,
+    ),
   );
   const priority = (key: string): number =>
     key === "border.enabled" || key === "background.kind" ? 0 : 1;
@@ -580,6 +615,7 @@ export function applyFields(
       const layout: [unknown, unknown] = [...(node.layout ?? [1, 1])];
       layout[key === "layout.rows" ? 0 : 1] = value;
       node.layout = layout as [number, number];
+      delete node.$styleImplicitLayout;
     } else if (key === "border.enabled") {
       set(
         node,
@@ -618,7 +654,7 @@ export function applyFields(
       set(node, binding.keys, value);
     }
   }
-  const validation = validateRenderDocument(next);
+  const validation = validateRenderDocument(options.preview?.(next) ?? next);
   if (!validation.ok) {
     for (const issue of validation.errors) {
       if (

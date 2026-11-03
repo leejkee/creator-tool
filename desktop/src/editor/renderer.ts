@@ -4,6 +4,7 @@ import {
   encodePng,
   createTauriRenderResources,
 } from "../render-engine";
+import type { RenderResourceProvider } from "../render-engine";
 import type { RendererPort, RenderOutcome, EditorIssue } from "./contracts";
 import { documentCopy, indexModules } from "./protocol";
 
@@ -26,8 +27,9 @@ function within(
   const cy = Math.max(box.y + r, Math.min(y, box.y + box.height - r));
   return (x - cx) ** 2 + (y - cy) ** 2 <= r ** 2;
 }
-export function createRenderer(): RendererPort {
-  const resources = createTauriRenderResources();
+export function createRenderer(
+  resources: RenderResourceProvider = createTauriRenderResources(),
+): RendererPort {
   return {
     async render(payload, directory, signal): Promise<RenderOutcome> {
       const versions = new Map<string, string>();

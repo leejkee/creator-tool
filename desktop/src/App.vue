@@ -12,11 +12,18 @@ import PreviewPane from "./components/PreviewPane.vue";
 import ModuleInspector from "./components/ModuleInspector.vue";
 import InformationEditorForm from "./components/InformationEditorForm.vue";
 import InformationOptions from "./components/InformationOptions.vue";
+import ResourceLibrary from "./components/ResourceLibrary.vue";
+import ResourceForm from "./components/ResourceForm.vue";
 import { displayPath } from "./components/pathDisplay";
 import { useInformationArea } from "./components/useInformationArea";
 import { createEditor } from "./editor";
 import { protectWindowClose } from "./editor/host";
-import type { NewModuleInput } from "./editor/contracts";
+import type {
+  NewModuleInput,
+  NewModuleKind,
+  LibraryItem,
+  LibraryKind,
+} from "./editor/contracts";
 import "./editor.css";
 
 const {
@@ -37,12 +44,32 @@ const unsubscribe = editor.subscribe((value) => {
 const formMode = ref<"" | "document" | "module" | "move">("");
 const template = ref("");
 const formError = ref("");
+type ResourceAction =
+  | "new"
+  | "extract"
+  | "extract-document"
+  | "use"
+  | "copy"
+  | "rename"
+  | "name"
+  | "save-copy";
+const resourceForm = ref<{
+  mode: ResourceAction;
+  kind: LibraryKind;
+  id?: string;
+  name: string;
+  title: string;
+}>();
 const expanded = ref(false);
 const hint = ref("");
 const lastHint = ref("");
 const information = ref<HTMLElement>();
 const hasTask = computed(
-  () => !!formMode.value || pending.value || view.value.choosingPath,
+  () =>
+    !!formMode.value ||
+    !!resourceForm.value ||
+    pending.value ||
+    view.value.choosingPath,
 );
 const locked = computed(
   () => !view.value.ready || !!view.value.busy || hasTask.value,
@@ -75,6 +102,7 @@ function showModule(move = false): void {
 function cancelForm(): void {
   if (!view.value.busy && !pending.value && !view.value.choosingPath) {
     formMode.value = "";
+    resourceForm.value = undefined;
     formError.value = "";
   }
 }
@@ -91,6 +119,7 @@ async function finishForm(action: () => Promise<boolean>): Promise<void> {
   const previousStatus = view.value.status;
   if (await action()) {
     formMode.value = "";
+    resourceForm.value = undefined;
   } else if (
     view.value.status !== previousStatus ||
     previousError === view.value.status
@@ -113,6 +142,76 @@ function moveModule(
 }
 function toggleAutosave(event: Event): void {
   void editor.setAutosave((event.target as HTMLInputElement).checked);
+}
+function showResourceForm(
+  mode: ResourceAction,
+  kind: LibraryKind,
+  item?: LibraryItem,
+): void {
+  formMode.value = "";
+  formError.value = "";
+  const label = kind === "template" ? "模板" : "Style";
+  const titles: Record<ResourceAction, string> = {
+    new: `新建${label}`,
+    extract: `从当前模块提取${label}`,
+    "extract-document": "将当前作品另存为模板",
+    use: "从模板创建作品",
+    copy: `复制${label}`,
+    rename: `重命名${label}`,
+    name: `修改${label}名称`,
+    "save-copy": `另存${label}副本`,
+  };
+  resourceForm.value = {
+    mode,
+    kind,
+    id: item?.id,
+    name:
+      mode === "use" || mode === "new"
+        ? ""
+        : `${item?.name ?? view.value.activeName}${mode === "copy" || mode === "save-copy" ? "（副本）" : ""}`,
+    title: titles[mode],
+  };
+}
+async function submitResource(
+  name: string,
+  moduleKind: NewModuleKind,
+): Promise<void> {
+  const request = resourceForm.value;
+  if (!request) {
+    return;
+  }
+  await finishForm(async () => {
+    if (request.mode === "new") {
+      return editor.newResource(request.kind, name, moduleKind);
+    }
+    if (request.mode === "extract" || request.mode === "extract-document") {
+      return editor.extractResource(
+        request.kind,
+        name,
+        request.mode === "extract",
+      );
+    }
+    if (request.mode === "use") {
+      return editor.useResource(request.id!, name);
+    }
+    if (request.mode === "copy") {
+      return editor.copyResource(request.id!, name);
+    }
+    if (request.mode === "rename") {
+      return editor.renameResource(request.id!, name);
+    }
+    if (request.mode === "save-copy") {
+      return editor.saveResource(name);
+    }
+    return editor.nameResource(name);
+  });
+}
+function useLibraryItem(item: LibraryItem): void {
+  if (item.kind === "template") {
+    showResourceForm("use", item.kind, item);
+  } else {
+    void editor.useResource(item.id);
+  }
 }
 function showHint(event: Event): void {
   const target =
@@ -163,7 +262,7 @@ watch(
         ? "path"
         : decision.value
           ? "decision"
-          : formMode.value,
+          : (resourceForm.value?.title ?? formMode.value),
   () => {
     hint.value = "";
     lastHint.value = "";
@@ -206,7 +305,11 @@ function shortcut(event: KeyboardEvent): void {
     event.preventDefault();
     if (!hasTask.value) {
       if (event.shiftKey) {
-        void editor.saveAs();
+        if (view.value.resource) {
+          showResourceForm("save-copy", view.value.resource.kind);
+        } else {
+          void editor.saveAs();
+        }
       } else {
         void editor.save();
       }
@@ -260,6 +363,24 @@ onBeforeUnmount(() => {
       >
         <span>＋</span> 新建文档
       </button>
+      <div class="library-navigation">
+        <button
+          :class="{
+            primary: view.libraryOpen && view.libraryKind === 'template',
+          }"
+          :disabled="locked"
+          @click="editor.showLibrary('template')"
+        >
+          模板
+        </button>
+        <button
+          :class="{ primary: view.libraryOpen && view.libraryKind === 'style' }"
+          :disabled="locked"
+          @click="editor.showLibrary('style')"
+        >
+          Style
+        </button>
+      </div>
       <div class="sidebar-heading">
         <span class="eyebrow">工作区文档</span
         ><button
@@ -327,11 +448,23 @@ onBeforeUnmount(() => {
         <header class="document-toolbar">
           <div class="document-heading">
             <span class="eyebrow">{{
-              view.activePath ? "当前文档" : "图片编辑器"
+              view.libraryOpen
+                ? "全局资源库"
+                : view.resource
+                  ? `编辑${view.resource.kind === "template" ? "模板" : "Style"}`
+                  : view.activePath
+                    ? "当前文档"
+                    : "图片编辑器"
             }}</span>
             <div class="document-title">
               <h1 :data-hint="displayPath(view.activePath)">
-                {{ view.activeName || "你的下一张图片，从这里开始" }}
+                {{
+                  view.libraryOpen
+                    ? view.libraryKind === "template"
+                      ? "模板资源库"
+                      : "Style 资源库"
+                    : view.activeName || "你的下一张图片，从这里开始"
+                }}
               </h1>
               <span
                 v-if="view.activePath"
@@ -341,15 +474,46 @@ onBeforeUnmount(() => {
               >
             </div>
           </div>
-          <div v-if="view.activePath" class="toolbar-actions">
+          <div
+            v-if="view.activePath && !view.libraryOpen"
+            class="toolbar-actions"
+          >
             <button
               :disabled="locked"
               data-hint="Ctrl+S；仅保存已应用的修改"
               @click="editor.save()"
             >
               保存</button
-            ><button :disabled="locked" @click="editor.saveAs()">另存为</button
             ><button
+              v-if="!view.resource"
+              :disabled="locked"
+              @click="editor.saveAs()"
+            >
+              另存为
+            </button>
+            <button
+              v-else
+              :disabled="locked"
+              @click="showResourceForm('save-copy', view.resource.kind)"
+            >
+              另存副本
+            </button>
+            <button
+              v-if="view.resource"
+              :disabled="locked"
+              @click="showResourceForm('name', view.resource.kind)"
+            >
+              修改名称
+            </button>
+            <button
+              v-else
+              :disabled="locked"
+              @click="showResourceForm('extract-document', 'template')"
+            >
+              保存为模板
+            </button>
+            <button
+              v-if="!view.resource"
               class="primary"
               :disabled="
                 locked ||
@@ -372,7 +536,24 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </header>
-        <template v-if="view.activePath">
+        <ResourceLibrary
+          v-if="view.libraryOpen"
+          :items="view.libraryItems"
+          :kind="view.libraryKind"
+          :disabled="locked"
+          :can-apply="!!view.selectedId && view.resource?.kind !== 'style'"
+          :can-create="!!view.preferences.workspace"
+          @use="useLibraryItem"
+          @edit="(item) => editor.editResource(item.id)"
+          @copy="(item) => showResourceForm('copy', item.kind, item)"
+          @rename="(item) => showResourceForm('rename', item.kind, item)"
+          @remove="(item) => editor.deleteResource(item.id)"
+          @regenerate="(item) => editor.regenerateResource(item.id)"
+          @create="showResourceForm('new', view.libraryKind)"
+          @refresh="editor.refreshLibrary()"
+          @close="editor.hideLibrary()"
+        />
+        <template v-else-if="view.activePath">
           <div class="editing-toolbar">
             <span class="muted">{{ view.selectedName || "尚未选中模块" }}</span
             ><button :disabled="locked" @click="showModule()">
@@ -402,6 +583,9 @@ onBeforeUnmount(() => {
               @remove="editor.removeSelected()"
               @move="showModule(true)"
               @fonts="editor.refreshFonts()"
+              @style="showResourceForm('extract', 'style')"
+              @template="showResourceForm('extract', 'template')"
+              @choose-style="editor.showLibrary('style')"
             />
           </div>
         </template>
@@ -524,6 +708,20 @@ onBeforeUnmount(() => {
             @add="addModule"
             @move="moveModule"
           />
+          <ResourceForm
+            v-if="resourceForm"
+            v-show="!pending && !view.choosingPath"
+            :key="resourceForm.title"
+            :title="resourceForm.title"
+            :initial-name="resourceForm.name"
+            :allow-kind="resourceForm.mode === 'new'"
+            :default-kind="resourceForm.kind === 'template' ? 'layout' : 'text'"
+            :disabled="!!view.busy"
+            :choose="chooseOption"
+            :error="formError"
+            @submit="submitResource"
+            @cancel="cancelForm"
+          />
           <section v-if="!hasTask" class="information-messages">
             <p v-if="hint || lastHint" class="information-hint">
               {{ displayPath(hint || lastHint) }}
@@ -541,7 +739,14 @@ onBeforeUnmount(() => {
                   @click="editor.reloadExternal()"
                 >
                   重新加载</button
-                ><button :disabled="locked" @click="editor.saveAs()">
+                ><button
+                  :disabled="locked"
+                  @click="
+                    view.resource
+                      ? showResourceForm('save-copy', view.resource.kind)
+                      : editor.saveAs()
+                  "
+                >
                   另存为
                 </button>
               </div>

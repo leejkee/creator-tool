@@ -128,8 +128,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Could not upload the installer checksum."
           }
-      - name: Link release draft
+      - name: Publish release after uploading all assets
         env:
-          RELEASE_URL: ${{ steps.build.outputs.releaseHtmlUrl }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
-          "[查看 Release 草稿]($env:RELEASE_URL) — 安装包与 SHA256 校验文件已上传，请检查后手动发布。" >> $env:GITHUB_STEP_SUMMARY
+          $releaseArguments = @("release", "edit", $env:RELEASE_TAG, "--repo", $env:GITHUB_REPOSITORY, "--draft=false")
+          if ($env:RELEASE_PRERELEASE -ne "true") {
+            $releaseArguments += "--latest"
+          }
+          $notesPath = Join-Path ".github/release-notes" "$env:RELEASE_TAG.md"
+          if (Test-Path -LiteralPath $notesPath) {
+            $releaseArguments += @("--notes-file", $notesPath)
+          }
+          gh @releaseArguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not publish the release."
+          }
+      - name: Link published release
+        env:
+          RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.tag }}
+        run: |
+          "[查看 Release]($env:RELEASE_URL) — 安装包与 SHA256 校验文件已上传，版本已发布。" >> $env:GITHUB_STEP_SUMMARY

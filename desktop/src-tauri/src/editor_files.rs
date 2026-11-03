@@ -111,7 +111,7 @@ pub async fn validate_editor_workspace(workspace: String) -> Result<String> {
     .map_err(|e| error("WORKSPACE_CHECK_FAILED", e))?
 }
 
-fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
+pub(super) fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -125,7 +125,7 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-fn replace_file(path: &Path, bytes: &[u8]) -> Result<()> {
+pub(super) fn replace_file(path: &Path, bytes: &[u8]) -> Result<()> {
     let temporary = path.with_file_name(format!(
         ".creator-save-{}-{}.tmp",
         std::process::id(),

@@ -1,7 +1,7 @@
 {
   "name": "creator-tool-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "check": "npm run lint && npm run format:check && npm run build",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
+    "library:previews": "node scripts/generate-library-previews.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

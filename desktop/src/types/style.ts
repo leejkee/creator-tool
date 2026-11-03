@@ -15,7 +15,7 @@ export interface StyleNode extends ExtensionFields {
   readonly layout?: GridLayout;
   readonly children?: readonly PlacedModule<StyleNode>[];
   readonly style?: JsonObject;
-  /** Nonempty only for image recipes; replaces the target's complete processing chain. */
+  /** Omitted preserves the target chain; an explicit array replaces it, including []. */
   readonly processors?: readonly ImageProcessor[];
 }
 
