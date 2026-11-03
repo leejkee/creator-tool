@@ -16,6 +16,36 @@ export interface StoredFile {
   payload: unknown;
   external?: { message: string; reloadable: boolean };
 }
+export type LibraryKind = "template" | "style";
+export interface LibraryItem {
+  id: string;
+  name: string;
+  kind: LibraryKind;
+  version: string;
+  builtIn: boolean;
+  thumbnail?: string;
+  previewError?: string;
+}
+export interface LibraryRecord extends LibraryItem {
+  payload: unknown;
+}
+export interface ResourceEdit {
+  id?: string;
+  name: string;
+  savedName: string;
+  kind: LibraryKind;
+  version?: string;
+  builtIn: boolean;
+}
+export interface LibrarySave {
+  id?: string;
+  name: string;
+  kind: LibraryKind;
+  payload: unknown;
+  thumbnail?: string;
+  previewError?: string;
+  expectedVersion?: string;
+}
 export interface EditorIssue {
   severity: "error" | "warning";
   message: string;
@@ -91,6 +121,10 @@ export interface EditorView {
   issues: readonly EditorIssue[];
   external?: { message: string; reloadable: boolean };
   fonts: readonly string[];
+  resource?: Readonly<ResourceEdit>;
+  libraryOpen: boolean;
+  libraryKind: LibraryKind;
+  libraryItems: readonly LibraryItem[];
 }
 export interface Decision {
   title: string;
@@ -151,6 +185,17 @@ export interface DesktopPort {
     bytes: Uint8Array,
     version?: string,
   ): Promise<string>;
+  libraryContext(): Promise<{ directory: string; demoPath: string }>;
+  libraryList(): Promise<LibraryRecord[]>;
+  libraryRead(id: string): Promise<LibraryRecord>;
+  librarySave(request: LibrarySave): Promise<LibraryRecord>;
+  libraryDelete(id: string, expectedVersion: string): Promise<void>;
+  libraryVersion(id: string): Promise<string | undefined>;
+  createFromLibrary(
+    workspace: string,
+    name: string,
+    document: unknown,
+  ): Promise<StoredFile>;
 }
 
 export interface RenderOutcome {

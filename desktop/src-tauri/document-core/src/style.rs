@@ -4,6 +4,12 @@ use crate::{ImageProcessor, Node, PlacedModule};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+fn optional_processors<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<Vec<ImageProcessor>>, D::Error> {
+    Vec::<ImageProcessor>::deserialize(deserializer).map(Some)
+}
+
 /// Reuses module geometry and visual parameters, without requiring content or IDs.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StyleNode {
@@ -15,8 +21,12 @@ pub struct StyleNode {
     pub layout: Option<(u32, u32)>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style: Option<Map<String, Value>>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub processors: Vec<ImageProcessor>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "optional_processors"
+    )]
+    pub processors: Option<Vec<ImageProcessor>>,
     /// Width, height, fit and other render parameters remain extensible.
     #[serde(flatten)]
     pub properties: Map<String, Value>,

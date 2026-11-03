@@ -10,7 +10,20 @@ import type {
   RendererPort,
   StoredFile,
   WorkspaceItem,
+  LibraryKind,
+  LibraryRecord,
+  NewModuleKind,
+  ResourceEdit,
 } from "./contracts";
+import {
+  applyStyleResource,
+  emptyResource,
+  resourceDocument,
+  resourcePayload,
+  resourcePreview,
+  styleResource,
+  templateResource,
+} from "./library-protocol";
 import {
   addModule,
   applyFields,
@@ -26,6 +39,7 @@ import {
   removeModule,
 } from "./protocol";
 import type { WorkingDocument } from "./protocol";
+import { thumbnailDataUrl } from "./thumbnail";
 
 const describe = (error: unknown): string =>
   error && typeof error === "object" && "message" in error
@@ -38,6 +52,14 @@ export class EditorApplication {
   private preferences: AppPreferences = { autosave: false };
   private entries: WorkspaceItem[] = [];
   private file?: StoredFile;
+  private resource?: ResourceEdit;
+  private library?: { directory: string; demoPath: string };
+  private libraryRecords: LibraryRecord[] = [];
+  private libraryOpen = false;
+  private libraryKind: LibraryKind = "template";
+  private libraryPoll?: ReturnType<typeof setInterval>;
+  private checkingResource = false;
+  private resourceObservedVersion?: string;
   private work?: WorkingDocument;
   private baseline = "";
   private baselineAssets = new Map<string, string>();
@@ -95,7 +117,8 @@ export class EditorApplication {
       ready: this.ready,
       preferences: { ...this.preferences },
       entries: this.entries,
-      activeName: this.file ? filename(this.file.path) : "",
+      activeName:
+        this.resource?.name ?? (this.file ? filename(this.file.path) : ""),
       activePath: this.file?.path ?? "",
       activeDirectory: this.file?.directory ?? "",
       dirty: this.dirty(),
@@ -110,6 +133,7 @@ export class EditorApplication {
             this.draft,
             this.errors,
             this.fonts,
+            this.resource?.kind,
           )
         : [],
       parents: this.work ? parents(this.work) : [],
@@ -122,6 +146,12 @@ export class EditorApplication {
       issues: this.issues,
       external: this.file?.external,
       fonts: this.fonts,
+      resource: this.resource ? { ...this.resource } : undefined,
+      libraryOpen: this.libraryOpen,
+      libraryKind: this.libraryKind,
+      libraryItems: this.libraryRecords.map(
+        ({ payload: _payload, ...item }) => item,
+      ),
     };
   }
   subscribe(listener: (view: EditorView) => void): () => void {
@@ -140,7 +170,11 @@ export class EditorApplication {
   private dirty(): boolean {
     return (
       !!this.work &&
-      (JSON.stringify(this.work) !== this.baseline || this.pending.size > 0)
+      (JSON.stringify(this.work) !== this.baseline ||
+        this.pending.size > 0 ||
+        (!!this.resource &&
+          (!this.resource.id ||
+            this.resource.name !== this.resource.savedName)))
     );
   }
   private fail(error: unknown): void {
@@ -263,6 +297,10 @@ export class EditorApplication {
     if (!this.preferences.workspace) {
       await this.chooseWorkspace();
     }
+    await this.refreshLibrary();
+    this.libraryPoll = setInterval(() => {
+      void this.checkResource();
+    }, 2500);
   }
   async refreshFonts(): Promise<void> {
     if (!this.desktop.available()) {
@@ -291,7 +329,7 @@ export class EditorApplication {
         const entries = await this.desktop.scan(workspace);
         const next = { ...this.preferences, workspace };
         await this.desktop.savePreferences(next);
-        if (this.file) {
+        if (this.file && !this.resource) {
           await this.desktop.close(this.file);
         }
         this.reset();
@@ -328,6 +366,10 @@ export class EditorApplication {
     });
   }
   async open(entry: WorkspaceItem): Promise<void> {
+    if (entry.path === this.file?.path && !this.resource) {
+      this.hideLibrary();
+      return;
+    }
     const workspace = this.preferences.workspace;
     if (
       this.busy ||
@@ -339,7 +381,11 @@ export class EditorApplication {
     }
     await this.perform("正在打开文档…", async () => {
       const next = await this.desktop.open(workspace, entry.directory);
-      if (this.file && this.file.sessionId !== next.sessionId) {
+      if (
+        this.file &&
+        !this.resource &&
+        this.file.sessionId !== next.sessionId
+      ) {
         try {
           await this.desktop.close(this.file);
         } catch (error) {
@@ -365,7 +411,7 @@ export class EditorApplication {
         name,
         template,
       );
-      if (this.file) {
+      if (this.file && !this.resource) {
         await this.desktop.close(this.file);
       }
       this.load(next);
@@ -375,6 +421,417 @@ export class EditorApplication {
   }
   async chooseTemplate(): Promise<string | undefined> {
     return this.choosePath("json", this.preferences.workspace);
+  }
+  private async fetchLibrary(): Promise<void> {
+    this.library ??= await this.desktop.libraryContext();
+    this.libraryRecords = await this.desktop.libraryList();
+  }
+  async refreshLibrary(): Promise<boolean> {
+    if (!this.desktop.available()) {
+      return false;
+    }
+    return this.perform("正在读取本地资源库…", () => this.fetchLibrary());
+  }
+  async showLibrary(kind: LibraryKind): Promise<void> {
+    if (await this.refreshLibrary()) {
+      this.libraryKind = kind;
+      this.libraryOpen = true;
+      this.emit();
+    }
+  }
+  hideLibrary(): void {
+    this.libraryOpen = false;
+    this.emit();
+  }
+  private loadResource(record: {
+    id?: string;
+    name: string;
+    kind: LibraryKind;
+    payload: unknown;
+    version?: string;
+    builtIn: boolean;
+  }): void {
+    const work = resourceDocument(record.kind, record.payload);
+    this.reset();
+    const name = record.builtIn ? `${record.name}（副本）` : record.name;
+    this.resource = {
+      id: record.id,
+      name,
+      savedName: name,
+      kind: record.kind,
+      version: record.version,
+      builtIn: record.builtIn,
+    };
+    this.resourceObservedVersion = record.version;
+    this.file = {
+      sessionId: `$library:${record.id ?? "new"}`,
+      path: `${this.library!.directory}/users/${record.id ?? "new"}.json`,
+      directory: this.library!.directory,
+      version: 0,
+      payload: record.payload,
+    };
+    this.work = work;
+    this.baseline = JSON.stringify(work);
+    this.selected = work.modules[0]?.id ?? "";
+    this.status = record.builtIn
+      ? "正在编辑内置资源副本，保存后出现在“我的”资源中"
+      : "在右侧编辑参数，应用后保存到本地资源库";
+    this.emit();
+  }
+  private async detachDocument(): Promise<void> {
+    if (this.file && !this.resource) {
+      await this.desktop.close(this.file);
+    }
+  }
+  async editResource(id: string): Promise<boolean> {
+    if (this.busy || !(await this.prepareLeave())) {
+      return false;
+    }
+    return this.perform("正在打开资源…", async () => {
+      this.library ??= await this.desktop.libraryContext();
+      const record = await this.desktop.libraryRead(id);
+      resourceDocument(record.kind, record.payload);
+      await this.detachDocument();
+      this.loadResource(record);
+      await this.refreshPreview();
+    });
+  }
+  async newResource(
+    kind: LibraryKind,
+    name: string,
+    moduleKind: NewModuleKind,
+  ): Promise<boolean> {
+    if (!name.trim() || !(await this.prepareLeave())) {
+      return false;
+    }
+    return this.perform("正在创建资源…", async () => {
+      this.library ??= await this.desktop.libraryContext();
+      const work = emptyResource(kind, moduleKind);
+      await this.detachDocument();
+      this.loadResource({
+        name: name.trim(),
+        kind,
+        payload: resourcePayload(kind, work),
+        builtIn: false,
+      });
+      await this.refreshPreview();
+    });
+  }
+  async extractResource(
+    kind: LibraryKind,
+    name: string,
+    selected = true,
+  ): Promise<boolean> {
+    if (
+      !this.work ||
+      !name.trim() ||
+      this.busy ||
+      !(await this.settleDraft())
+    ) {
+      return false;
+    }
+    const source = selected
+      ? indexModules(this.work).get(this.selected)?.module
+      : this.work.modules[0];
+    if (!source) {
+      this.fail("请选择一个模块");
+      return false;
+    }
+    const payload =
+      kind === "style"
+        ? styleResource(source)
+        : templateResource(this.work, selected ? this.selected : undefined);
+    if (!(await this.prepareLeave())) {
+      return false;
+    }
+    return this.perform("正在提取资源…", async () => {
+      this.library ??= await this.desktop.libraryContext();
+      await this.detachDocument();
+      this.loadResource({ name: name.trim(), kind, payload, builtIn: false });
+      await this.refreshPreview();
+    });
+  }
+  async useResource(id: string, name?: string): Promise<boolean> {
+    const item = this.libraryRecords.find((item) => item.id === id);
+    if (!item) {
+      return false;
+    }
+    if (item.kind === "style") {
+      if (
+        !this.work ||
+        this.resource?.kind === "style" ||
+        !(await this.settleDraft())
+      ) {
+        this.status = "请先打开作品并选择要应用 Style 的模块";
+        this.emit();
+        return false;
+      }
+      return this.perform("正在应用 Style…", async () => {
+        const record = await this.desktop.libraryRead(id);
+        this.commit(
+          applyStyleResource(this.work!, this.selected, record.payload),
+        );
+        this.libraryOpen = false;
+        await this.refreshPreview();
+        this.scheduleSave();
+        this.status = "Style 已应用；未提供的参数保持原样";
+      });
+    }
+    if (
+      !name?.trim() ||
+      !this.preferences.workspace ||
+      !(await this.prepareLeave())
+    ) {
+      return false;
+    }
+    return this.perform("正在从模板创建作品…", async () => {
+      const record = await this.desktop.libraryRead(id);
+      const work = resourcePreview(
+        "template",
+        resourceDocument("template", record.payload),
+        this.library!.demoPath,
+      );
+      const created = await this.desktop.createFromLibrary(
+        this.preferences.workspace!,
+        name.trim(),
+        work,
+      );
+      await this.detachDocument();
+      this.load(created);
+      this.entries = await this.desktop.scan(this.preferences.workspace!);
+      await this.refreshPreview();
+    });
+  }
+  private async resourceThumbnail(
+    kind: LibraryKind,
+    work: WorkingDocument,
+  ): Promise<{ thumbnail?: string; previewError?: string }> {
+    let result: RenderOutcome | undefined;
+    try {
+      result = await this.renderer.render(
+        resourcePreview(kind, work, this.library!.demoPath),
+        this.library!.directory,
+        new AbortController().signal,
+      );
+      if (!result.frame) {
+        return {
+          previewError:
+            result.issues.map((issue) => issue.message).join("；") ||
+            "无可渲染内容",
+        };
+      }
+      return { thumbnail: thumbnailDataUrl(result.frame) };
+    } catch (error) {
+      return { previewError: describe(error) };
+    } finally {
+      result?.dispose();
+    }
+  }
+  async saveResource(copyName?: string): Promise<boolean> {
+    if (!this.resource || !this.work) {
+      return false;
+    }
+    clearTimeout(this.timer);
+    return this.perform("正在保存资源及缩略图…", async () => {
+      const edit = this.resource!;
+      const copy = !!copyName || edit.builtIn;
+      const preview = await this.resourceThumbnail(edit.kind, this.work!);
+      const saved = await this.desktop.librarySave({
+        id: copy ? undefined : edit.id,
+        name: copyName?.trim() || edit.name,
+        kind: edit.kind,
+        payload: resourcePayload(edit.kind, this.work!),
+        expectedVersion: copy ? undefined : edit.version,
+        ...preview,
+      });
+      this.resource = {
+        id: saved.id,
+        name: saved.name,
+        savedName: saved.name,
+        kind: saved.kind,
+        version: saved.version,
+        builtIn: false,
+      };
+      this.resourceObservedVersion = saved.version;
+      this.file = {
+        ...this.file!,
+        sessionId: `$library:${saved.id}`,
+        path: `${this.library!.directory}/users/${saved.id}.json`,
+        external: undefined,
+      };
+      this.baseline = JSON.stringify(this.work);
+      await this.fetchLibrary();
+      this.status = preview.previewError
+        ? `资源已保存，预览不可用：${preview.previewError}`
+        : "资源和缩略图已保存到“我的”资源库";
+    });
+  }
+  nameResource(name: string): boolean {
+    if (!this.resource || !name.trim() || this.busy) {
+      return false;
+    }
+    this.resource.name = name.trim();
+    this.scheduleSave();
+    this.emit();
+    return true;
+  }
+  async renameResource(id: string, name: string): Promise<boolean> {
+    const record = this.libraryRecords.find((item) => item.id === id);
+    if (!record || record.builtIn || !name.trim()) {
+      return false;
+    }
+    return this.perform("正在重命名资源…", async () => {
+      const saved = await this.desktop.librarySave({
+        id,
+        name: name.trim(),
+        kind: record.kind,
+        payload: record.payload,
+        thumbnail: record.thumbnail,
+        previewError: record.previewError,
+        expectedVersion: record.version,
+      });
+      if (this.resource?.id === id) {
+        this.resource.name = saved.name;
+        this.resource.savedName = saved.name;
+        this.resource.version = saved.version;
+      }
+      await this.fetchLibrary();
+      this.status = "资源名称已更新";
+    });
+  }
+  async copyResource(id: string, name: string): Promise<boolean> {
+    return this.perform("正在复制资源…", async () => {
+      const record = await this.desktop.libraryRead(id);
+      const work = resourceDocument(record.kind, record.payload);
+      const preview = await this.resourceThumbnail(record.kind, work);
+      await this.desktop.librarySave({
+        name: name.trim(),
+        kind: record.kind,
+        payload: resourcePayload(record.kind, work),
+        ...preview,
+      });
+      await this.fetchLibrary();
+      this.status = "资源副本已保存到“我的”资源库";
+    });
+  }
+  async deleteResource(id: string): Promise<void> {
+    const record = this.libraryRecords.find((item) => item.id === id);
+    if (!record || record.builtIn || this.busy) {
+      return;
+    }
+    if (this.resource?.id === id && !(await this.prepareLeave())) {
+      return;
+    }
+    const answer = await this.ask({
+      title: "删除本地资源？",
+      message: `删除“${record.name}”不会改变已经创建或应用的作品。`,
+      choices: [
+        { value: "delete", label: "删除", danger: true },
+        { value: "cancel", label: "取消" },
+      ],
+    });
+    if (answer !== "delete") {
+      return;
+    }
+    await this.perform("正在删除资源…", async () => {
+      const latest = this.libraryRecords.find((item) => item.id === id)!;
+      await this.desktop.libraryDelete(id, latest.version);
+      if (this.resource?.id === id) {
+        this.reset();
+        this.libraryOpen = true;
+      }
+      await this.fetchLibrary();
+      this.status = "资源已删除，已有作品不受影响";
+    });
+  }
+  async regenerateResource(id: string): Promise<void> {
+    await this.perform("正在重新生成缩略图…", async () => {
+      const record = await this.desktop.libraryRead(id);
+      const preview = await this.resourceThumbnail(
+        record.kind,
+        resourceDocument(record.kind, record.payload),
+      );
+      if (record.builtIn) {
+        this.libraryRecords = this.libraryRecords.map((item) =>
+          item.id === id
+            ? {
+                ...record,
+                thumbnail: undefined,
+                previewError: undefined,
+                ...preview,
+              }
+            : item,
+        );
+      } else {
+        const saved = await this.desktop.librarySave({
+          id,
+          name: record.name,
+          kind: record.kind,
+          payload: record.payload,
+          expectedVersion: record.version,
+          ...preview,
+        });
+        if (
+          this.resource?.id === id &&
+          this.resource.version === record.version
+        ) {
+          this.resource.version = saved.version;
+          this.resourceObservedVersion = saved.version;
+        }
+        await this.fetchLibrary();
+      }
+      this.status = preview.previewError
+        ? `预览不可用：${preview.previewError}`
+        : "缩略预览已更新";
+    });
+  }
+  private async checkResource(): Promise<void> {
+    const resource = this.resource;
+    if (
+      !resource?.id ||
+      resource.builtIn ||
+      this.busy ||
+      this.checkingResource ||
+      this.asking ||
+      this.interacting
+    ) {
+      return;
+    }
+    this.checkingResource = true;
+    try {
+      const version = await this.desktop.libraryVersion(resource.id);
+      if (this.resource !== resource || !this.file) {
+        return;
+      }
+      if (version === resource.version) {
+        this.resourceObservedVersion = version;
+        if (this.file.external) {
+          this.file.external = undefined;
+          this.emit();
+        }
+        return;
+      }
+      if (version !== this.resourceObservedVersion) {
+        this.resourceObservedVersion = version;
+        this.file.version++;
+        this.file.external = {
+          message: version ? "资源已被其他程序修改" : "资源文件已被删除",
+          reloadable: !!version,
+        };
+        this.emit();
+        this.maybeReload();
+      }
+    } catch (error) {
+      if (this.resource === resource && this.file && !this.file.external) {
+        this.file.external = {
+          message: `无法读取资源：${describe(error)}`,
+          reloadable: false,
+        };
+        this.emit();
+      }
+    } finally {
+      this.checkingResource = false;
+    }
   }
   private load(file: StoredFile): void {
     this.reset();
@@ -407,6 +864,10 @@ export class EditorApplication {
     this.shown = undefined;
     this.outcome = undefined;
     this.file = undefined;
+    this.resource = undefined;
+    this.resourceObservedVersion = undefined;
+    this.autoReloadAttempt = "";
+    this.libraryOpen = false;
     this.work = undefined;
     this.selected = "";
     this.draft.clear();
@@ -450,7 +911,7 @@ export class EditorApplication {
       return true;
     }
     const answer = await this.ask({
-      title: "文档尚未保存",
+      title: this.resource ? "资源尚未保存" : "文档尚未保存",
       message: "保存成功后才能继续。放弃修改不会更改磁盘上的 JSON。",
       choices: [
         { value: "save", label: "保存并继续", primary: true },
@@ -471,7 +932,7 @@ export class EditorApplication {
       return;
     }
     await this.perform("正在关闭文档…", async () => {
-      if (this.file) {
+      if (this.file && !this.resource) {
         await this.desktop.close(this.file);
       }
       this.reset();
@@ -488,6 +949,7 @@ export class EditorApplication {
       new Map(),
       new Map(),
       this.fonts,
+      this.resource?.kind,
     ).find((f) => f.id === id);
     if (original?.value === value) {
       this.draft.delete(id);
@@ -524,7 +986,18 @@ export class EditorApplication {
     }
     let next: WorkingDocument;
     try {
-      next = applyFields(this.work, this.selected, this.draft);
+      next = applyFields(this.work, this.selected, this.draft, {
+        mode: this.resource?.kind,
+        preview:
+          this.resource && this.library
+            ? (doc) =>
+                resourcePreview(
+                  this.resource!.kind,
+                  doc,
+                  this.library!.demoPath,
+                )
+            : undefined,
+      });
     } catch (error) {
       if (error instanceof FieldFailure) {
         this.errors = error.errors;
@@ -557,6 +1030,12 @@ export class EditorApplication {
     return applied;
   }
   private commit(next: WorkingDocument): void {
+    if (this.resource) {
+      this.work =
+        this.resource.kind === "template" ? templateResource(next) : next;
+      this.pending.clear();
+      return;
+    }
     const before = this.work ? materialPaths(this.work) : new Map();
     const after = materialPaths(next);
     for (const key of this.pending.keys()) {
@@ -652,7 +1131,9 @@ export class EditorApplication {
     this.emit();
     try {
       return await this.renderer.render(
-        documentCopy(doc),
+        this.resource && this.library
+          ? resourcePreview(this.resource.kind, doc, this.library.demoPath)
+          : documentCopy(doc),
         this.file!.directory,
         this.abort.signal,
       );
@@ -699,6 +1180,9 @@ export class EditorApplication {
     }, 2000);
   }
   async save(destination?: string): Promise<boolean> {
+    if (this.resource) {
+      return this.saveResource();
+    }
     if (!this.file || !this.work) {
       return false;
     }
@@ -755,6 +1239,11 @@ export class EditorApplication {
     });
   }
   async saveAs(): Promise<void> {
+    if (this.resource) {
+      this.status = "使用资源编辑器上方的“另存副本”保存新资源";
+      this.emit();
+      return;
+    }
     if (this.busy || !this.file) {
       return;
     }
@@ -768,7 +1257,7 @@ export class EditorApplication {
     }
   }
   async exportPng(): Promise<void> {
-    if (!this.file || this.busy) {
+    if (!this.file || this.busy || this.resource) {
       return;
     }
     if (this.dirty() && !(await this.save())) {
@@ -864,12 +1353,19 @@ export class EditorApplication {
       }
     }
     await this.perform("正在重新加载…", async () => {
+      if (this.resource?.id) {
+        const record = await this.desktop.libraryRead(this.resource.id);
+        this.loadResource(record);
+        await this.refreshPreview();
+        return;
+      }
       const file = await this.desktop.reload(this.file!);
       this.load(file);
       await this.refreshPreview();
     });
   }
   dispose(): void {
+    clearInterval(this.libraryPoll);
     this.unsubscribe?.();
     this.reset();
     this.listeners.clear();

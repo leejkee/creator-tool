@@ -53,6 +53,18 @@ GitHub Actions 的版本标签、Release 草稿及发布操作见[发布说明](
 
 ## 示例与实现入口
 
+### 内置资源预览
+
+修改内置模板、Style 或演示图片后，在 `desktop/` 下执行：
+
+```powershell
+npm run library:previews
+```
+
+该命令使用独立临时浏览器配置、现有 Canvas 渲染器及缩略图生成逻辑，将预览嵌入内置资源数据；不读取用户配置或素材。这是应用资源构建步骤，不代替交互或渲染验收。需要本机 Chromium 浏览器，可通过 `BROWSER_PATH` 指定可执行文件路径。
+
+### 参考入口
+
 - [创作示例](../desktop/examples/创作示例/创作示例.json)：可直接通过 `desktop/examples` 工作区打开的完整文档。
 - [网格数据示例](../desktop/examples/grid.image.json)、[Style 数据示例](../desktop/examples/module-style.json)：数据结构参考；作为模板选择前须遵循文档命名规则。
 - [GUI 功能定位表](Gui-func-table.md)：界面入口与实现逻辑索引。

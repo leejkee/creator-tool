@@ -184,6 +184,31 @@ impl DocumentStore {
         module_name: &str,
         template_path: Option<&Path>,
     ) -> Result<Snapshot> {
+        let document = if let Some(template) = template_path {
+            let path = fs::canonicalize(template)
+                .map_err(|e| DocumentError::new("TEMPLATE_READ_FAILED", e))?;
+            let bytes =
+                fs::read(&path).map_err(|e| DocumentError::new("TEMPLATE_READ_FAILED", e))?;
+            let mut document = ImageDocument::parse(&bytes)?;
+            rebase_document(
+                &mut document,
+                path.parent().expect("Canonical template has a parent"),
+            );
+            Some(document)
+        } else {
+            None
+        };
+        self.create_from_document(base_directory, source_session_id, module_name, document)
+    }
+
+    /// Create an independent document from an explicit working copy or a blank root.
+    pub fn create_from_document(
+        &mut self,
+        base_directory: Option<&Path>,
+        source_session_id: Option<&str>,
+        module_name: &str,
+        document: Option<ImageDocument>,
+    ) -> Result<Snapshot> {
         validate_name(module_name)?;
         let base = match base_directory {
             Some(path) => directory(path)?,
@@ -201,34 +226,21 @@ impl DocumentStore {
             .next_id
             .checked_add(1)
             .ok_or_else(|| DocumentError::new("VERSION_EXHAUSTED", "Session IDs exhausted"))?;
-        let mut document = if let Some(template) = template_path {
-            let path = fs::canonicalize(template)
-                .map_err(|e| DocumentError::new("TEMPLATE_READ_FAILED", e))?;
-            let bytes =
-                fs::read(&path).map_err(|e| DocumentError::new("TEMPLATE_READ_FAILED", e))?;
-            let mut doc = ImageDocument::parse(&bytes)?;
-            rebase_document(
-                &mut doc,
-                path.parent().expect("Canonical template has a parent"),
-            );
-            doc
-        } else {
-            ImageDocument {
-                format: DOCUMENT_VERSION.into(),
-                document_id: String::new(),
-                revision: 0,
-                composition: Map::new(),
-                modules: vec![Node {
-                    id: Uuid::new_v4().to_string(),
-                    kind: None,
-                    children: Vec::new(),
-                    layout: Some((1, 1)),
-                    processors: Vec::new(),
-                    properties: Map::new(),
-                }],
+        let mut document = document.unwrap_or_else(|| ImageDocument {
+            format: DOCUMENT_VERSION.into(),
+            document_id: String::new(),
+            revision: 0,
+            composition: Map::new(),
+            modules: vec![Node {
+                id: Uuid::new_v4().to_string(),
+                kind: None,
+                children: Vec::new(),
+                layout: Some((1, 1)),
+                processors: Vec::new(),
                 properties: Map::new(),
-            }
-        };
+            }],
+            properties: Map::new(),
+        });
         document.document_id = Uuid::new_v4().to_string();
         document.revision = 0;
         document

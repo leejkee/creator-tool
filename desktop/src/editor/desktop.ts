@@ -6,6 +6,7 @@ import type {
   StoredFile,
   AppPreferences,
   WorkspaceItem,
+  LibraryRecord,
 } from "./contracts";
 
 export function fileRecord(snapshot: DocumentSnapshot): StoredFile {
@@ -138,5 +139,28 @@ export function createDesktopPort(): DesktopPort {
         bytes: Array.from(bytes),
         overwriteVersion: version ?? null,
       }),
+    libraryContext: () => invoke("library_context"),
+    libraryList: () => invoke<LibraryRecord[]>("list_library_resources"),
+    libraryRead: (id) => invoke<LibraryRecord>("read_library_resource", { id }),
+    librarySave: (request) =>
+      invoke<LibraryRecord>("save_library_resource", {
+        request: {
+          ...request,
+          id: request.id ?? null,
+          expectedVersion: request.expectedVersion ?? null,
+          thumbnail: request.thumbnail ?? null,
+          previewError: request.previewError ?? null,
+        },
+      }),
+    libraryDelete: (id, expectedVersion) =>
+      invoke("delete_library_resource", { id, expectedVersion }),
+    async libraryVersion(id) {
+      return (
+        (await invoke<string | null>("library_resource_version", { id })) ??
+        undefined
+      );
+    },
+    createFromLibrary: (workspace, name, document) =>
+      snapshot("create_library_document", { workspace, name, document }),
   };
 }
